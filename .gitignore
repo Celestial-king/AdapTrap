@@ -1,0 +1,43 @@
+# ── Python ─────────────────────────────────────────────────────────
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Large raw honeypot captures (>100MB — GitHub hard limit) ───────
+CICHoneynet_July2-9.csv
+CICHoneynet_July1.csv
+*.pcap
+*.pcapng
+
+# ── Temporary import working directories ───────────────────────────
+/tmp/
+adaptrap_import_*/
+
+# ── Session / state files (regenerated at runtime) ─────────────────
+reviewed_decisions.json
+escalate_queue.json
+imported_batches.json
+
+# ── Stale/duplicate batch artifacts ────────────────────────────────
+batch2__train.csv
+batch2__holdout.csv
+batch2__validation.csv
+batch2_deduplicated_checkpoint.json
+
+# ── Development logs ────────────────────────────────────────────────
+*.log
+batch2_run.log
+
+# ── OS / editor clutter ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
