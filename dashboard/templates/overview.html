@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Overview{% endblock %}
+
+{% block content %}
+
+<!-- Automation Workflow ─────────────────────────────────────────── -->
+<div class="card section-gap">
+    <h2>🔄 Automation Workflow</h2>
+    <div class="workflow-visual">
+        <div class="workflow-step workflow-auto">
+            <div class="icon">🤖</div>
+            <h3>AUTO-BLOCK</h3>
+            <p><strong>≥90th Percentile</strong></p>
+            <p>High-confidence threats</p>
+            <p>Instantly applied to firewall</p>
+            <p><strong>ZERO human intervention</strong></p>
+        </div>
+        <div class="workflow-step workflow-human">
+            <div class="icon">👤</div>
+            <h3>ANALYST REVIEW</h3>
+            <p><strong>70th–90th Percentile</strong></p>
+            <p>Ambiguous threats</p>
+            <p>Queue for human decision</p>
+            <p><strong>Manual approval required</strong></p>
+        </div>
+        <div class="workflow-step workflow-auto">
+            <div class="icon">✓</div>
+            <h3>AUTO-ALLOW</h3>
+            <p><strong>&lt;70th Percentile</strong></p>
+            <p>Low-risk profiles</p>
+            <p>Automatically allowed</p>
+            <p><strong>ZERO human intervention</strong></p>
+        </div>
+    </div>
+</div>
+
+<!-- Firewall Status + Automation Metrics + Threat Breakdown ────── -->
+<div class="grid section-gap">
+    <div class="card">
+        <h2>🛡️ Firewall Status</h2>
+        <div class="metric">
+            <span class="metric-label">Total Active Rules</span>
+            <span class="metric-value highlight" id="total-rules">—</span>
+        </div>
+        <div id="batch-metrics-container">
+            <div class="metric">
+                <span class="metric-label">Batch 1 Rules</span>
+                <span class="metric-value" id="batch1-rules">—</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Batch 2 Rules</span>
+                <span class="metric-value" id="batch2-rules">—</span>
+            </div>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Last Auto-Applied</span>
+            <span class="metric-value" id="last-applied" style="font-size:0.88em;">—</span>
+        </div>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="refreshData()">
+            🔄 Refresh Data
+        </button>
+    </div>
+
+    <div class="card">
+        <h2>📊 Automation Metrics</h2>
+        <div class="metric">
+            <span class="metric-label">
+                <span class="auto-indicator">🤖</span>Automation Rate
+            </span>
+            <span class="metric-value highlight" id="automation-rate">—</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">
+                <span class="auto-indicator">🤖</span>Zero-Touch Blocks
+            </span>
+            <span class="metric-value score-high" id="zero-touch-blocks">—</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">
+                <span class="auto-indicator">👤</span>Analyst Queue Depth
+            </span>
+            <span class="metric-value score-medium" id="analyst-queue">—</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>⚡ Threat Decision Breakdown</h2>
+        <div class="metric">
+            <span class="metric-label">
+                BLOCK Actions
+                <span class="badge badge-auto">🤖 AUTOMATED</span>
+                <span class="percentile-label">≥90th percentile</span>
+            </span>
+            <span class="metric-value score-high" id="block-count">—</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">
+                ESCALATE Actions
+                <span class="badge badge-human">👤 HUMAN REVIEW</span>
+                <span class="percentile-label">70th–90th percentile</span>
+            </span>
+            <span class="metric-value score-medium" id="escalate-count">—</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">
+                ALLOW Actions
+                <span class="badge badge-auto">🤖 AUTOMATED</span>
+                <span class="percentile-label">&lt;70th percentile</span>
+            </span>
+            <span class="metric-value score-low" id="allow-count">—</span>
+        </div>
+    </div>
+</div>
+
+<!-- Automated BLOCK Rules table ──────────────────────────────────── -->
+<div class="card section-gap">
+    <h2>🤖 Automated BLOCK Rules (Applied to Firewall)</h2>
+    <div id="rules-table"><div class="loading">Loading rules…</div></div>
+</div>
+
+<!-- Attack Patterns chart ─────────────────────────────────────────── -->
+<div class="card">
+    <h2>📈 Attack Patterns</h2>
+    <div class="chart-container">
+        <canvas id="attackChart"></canvas>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let attackChart = null;
+
+async function fetchData(endpoint) {
+    const r = await fetch(endpoint);
+    return r.json();
+}
+
+async function updateStatus() {
+    const status = await fetchData('/api/status');
+    document.getElementById('total-rules').textContent = status.total_active_rules ?? '0';
+
+    if (status.batches && status.batches.length > 0) {
+        const container = document.getElementById('batch-metrics-container');
+        container.innerHTML = status.batches.map(b => `
+            <div class="metric">
+                <span class="metric-label">${b.name} Rules</span>
+                <span class="metric-value">${b.applied ?? 0}</span>
+            </div>
+        `).join('');
+    } else {
+        const b1 = document.getElementById('batch1-rules');
+        const b2 = document.getElementById('batch2-rules');
+        if (b1) b1.textContent = status.batch1?.applied ?? '—';
+        if (b2) b2.textContent = status.batch2?.applied ?? '—';
+    }
+
+    const auto = await fetchData('/api/automation_metrics');
+    if (auto && !auto.error) {
+        document.getElementById('automation-rate').textContent  = auto.automation_rate + '%';
+        document.getElementById('zero-touch-blocks').textContent = auto.zero_touch_blocks;
+        document.getElementById('analyst-queue').textContent    = auto.analyst_queue_depth;
+        if (auto.last_auto_applied) {
+            document.getElementById('last-applied').textContent =
+                new Date(auto.last_auto_applied).toLocaleString();
+        }
+    }
+}
+
+async function updateMetrics() {
+    const metrics = await fetchData('/api/metrics');
+    const target = metrics.latest || metrics.batch2;
+    if (target && target.action_breakdown) {
+        const bd = target.action_breakdown;
+        document.getElementById('block-count').textContent    = bd.BLOCK?.count   ?? 0;
+        document.getElementById('escalate-count').textContent = bd.ESCALATE_TO_ANALYST?.count ?? 0;
+        document.getElementById('allow-count').textContent    = bd.ALLOW?.count   ?? 0;
+    }
+}
+
+async function updateAttackPatterns() {
+    const data = await fetchData('/api/attack_patterns');
+    if (!data.patterns) return;
+
+    const labels = data.patterns.map(p => p.service);
+    const counts = data.patterns.map(p => p.count);
+    const ctx    = document.getElementById('attackChart').getContext('2d');
+
+    if (attackChart) attackChart.destroy();
+
+    attackChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Attack Count',
+                data: counts,
+                backgroundColor: 'rgba(245,166,35,0.55)',
+                borderColor:     'rgba(245,197,24,0.9)',
+                borderWidth: 2,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks:  { stepSize: 1, color: '#888' },
+                    grid:   { color: '#1e1e1e' }
+                },
+                x: {
+                    ticks: { color: '#888' },
+                    grid:  { color: '#1e1e1e' }
+                }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+async function updateRulesTable() {
+    const data = await fetchData('/api/rules');
+    if (!data.rules) return;
+
+    const top = data.rules.slice(0, 50);
+    let html = `
+        <p class="info-text success-text">
+            ✓ ${data.total} BLOCK rules currently active in nftables firewall
+        </p>
+        <table>
+            <thead><tr>
+                <th>Batch</th><th>Source IP</th><th>Port</th>
+                <th>Anomaly Score</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+    `;
+    top.forEach(rule => {
+        const cls = rule.score > 0.1 ? 'score-high'
+                  : rule.score > 0   ? 'score-medium' : 'score-low';
+        html += `
+            <tr>
+                <td><span class="badge badge-human">${rule.batch}</span></td>
+                <td><strong>${rule.ip}</strong></td>
+                <td>${rule.port ?? '—'}</td>
+                <td class="${cls}">${rule.score.toFixed(4)}</td>
+                <td><span class="success-text">🤖 Applied</span></td>
+            </tr>
+        `;
+    });
+    html += '</tbody></table>';
+    document.getElementById('rules-table').innerHTML = html;
+}
+
+async function refreshData() {
+    await Promise.all([
+        updateStatus(),
+        updateMetrics(),
+        updateAttackPatterns(),
+        updateRulesTable(),
+    ]);
+}
+
+refreshData();
+setInterval(refreshData, 30000);
+</script>
+{% endblock %}

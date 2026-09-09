@@ -1,0 +1,595 @@
+{
+  "generated_at": "2026-09-08T05:37:39.970833+00:00",
+  "config": {
+    "contamination": 0.05,
+    "seed": 42,
+    "n_estimators": 100,
+    "low_percentile": 70,
+    "high_percentile": 90,
+    "thresholds": {
+      "low": -0.0840610748563638,
+      "high": -0.023970843917131526
+    }
+  },
+  "metrics": {
+    "flagging_rate_pct": 10.1,
+    "anomaly_score_distribution": {
+      "mean": -0.10375488972833719,
+      "std": 0.06439295169738546,
+      "min": -0.16096758206166273,
+      "max": 0.2369917466162444
+    },
+    "silhouette_coefficient": 0.2837583484287796,
+    "action_breakdown": {
+      "BLOCK": {
+        "count": 68,
+        "pct": 10.1
+      },
+      "ESCALATE_TO_ANALYST": {
+        "count": 134,
+        "pct": 19.9
+      },
+      "ALLOW": {
+        "count": 471,
+        "pct": 70.0
+      }
+    }
+  },
+  "bwt_fwt": {
+    "BWT": null,
+    "FWT": null
+  },
+  "rules_generated": 61,
+  "rule_details": [
+    {
+      "command": "nft insert rule inet filter input ip saddr 162.142.125.13 tcp dport 9200 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "162.142.125.13",
+      "dest_port": 9200,
+      "anomaly_score": -0.019952591628506433,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 103.84.250.83 tcp dport 23 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "103.84.250.83",
+      "dest_port": 23,
+      "anomaly_score": -0.02041477359901439,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 92.222.171.6 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "92.222.171.6",
+      "dest_port": 22,
+      "anomaly_score": -0.015392405975126422,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 222.168.225.138 tcp dport 23 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "222.168.225.138",
+      "dest_port": 23,
+      "anomaly_score": 0.0017557375623594718,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 131.202.84.62 tcp dport 64295 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "131.202.84.62",
+      "dest_port": 64295,
+      "anomaly_score": 0.14234702951063022,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 103.203.59.6 tcp dport 1723 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "103.203.59.6",
+      "dest_port": 1723,
+      "anomaly_score": -0.013566055268474986,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 47.89.158.180 tcp dport 110 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "47.89.158.180",
+      "dest_port": 110,
+      "anomaly_score": 0.049670585372156684,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 167.248.133.36 tcp dport 21 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "167.248.133.36",
+      "dest_port": 21,
+      "anomaly_score": -0.015085036565328613,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 49.89.119.142 tcp dport 23 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "49.89.119.142",
+      "dest_port": 23,
+      "anomaly_score": -0.013239517048228844,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 143.198.220.86 tcp dport 50100 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "143.198.220.86",
+      "dest_port": 50100,
+      "anomaly_score": 0.03459094802581514,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 218.92.0.107 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "218.92.0.107",
+      "dest_port": 22,
+      "anomaly_score": 0.02317631088027655,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 54.88.60.242 tcp dport 57562 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "54.88.60.242",
+      "dest_port": 57562,
+      "anomaly_score": -0.012008867531410006,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 118.186.25.236 tcp dport 1433 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "118.186.25.236",
+      "dest_port": 1433,
+      "anomaly_score": 0.15303272641706217,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 95.214.55.244 tcp dport 80 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "95.214.55.244",
+      "dest_port": 80,
+      "anomaly_score": 0.007765394973704598,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 167.94.146.60 tcp dport 8443 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "167.94.146.60",
+      "dest_port": 8443,
+      "anomaly_score": -0.007389204391601567,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 177.220.142.27 tcp dport 5900 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "177.220.142.27",
+      "dest_port": 5900,
+      "anomaly_score": -0.023558158415738994,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 218.92.0.60 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "218.92.0.60",
+      "dest_port": 22,
+      "anomaly_score": 0.06770267031563454,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 218.92.0.56 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "218.92.0.56",
+      "dest_port": 22,
+      "anomaly_score": 0.03404748628754123,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 123.24.67.162 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "123.24.67.162",
+      "dest_port": 22,
+      "anomaly_score": 0.017599789728177606,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 24.59.43.41 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "24.59.43.41",
+      "dest_port": 22,
+      "anomaly_score": 0.013355799750452313,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 61.177.172.140 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "61.177.172.140",
+      "dest_port": 22,
+      "anomaly_score": 0.02598374925725172,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 199.232.162.132 tcp dport 47580 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "199.232.162.132",
+      "dest_port": 47580,
+      "anomaly_score": 0.19951663864794894,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 20.189.122.249 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "20.189.122.249",
+      "dest_port": 22,
+      "anomaly_score": 0.032920596425825954,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 103.159.128.26 tcp dport 1433 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "103.159.128.26",
+      "dest_port": 1433,
+      "anomaly_score": 0.1502104032439981,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 170.64.138.231 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "170.64.138.231",
+      "dest_port": 22,
+      "anomaly_score": -0.020196690067131873,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 117.239.76.153 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "117.239.76.153",
+      "dest_port": 22,
+      "anomaly_score": 0.05180235137745409,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 112.224.192.154 tcp dport 5555 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "112.224.192.154",
+      "dest_port": 5555,
+      "anomaly_score": 0.17993926477137262,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 5.181.80.120 tcp dport 55940 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "5.181.80.120",
+      "dest_port": 55940,
+      "anomaly_score": 0.032359944627020576,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 122.175.12.225 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "122.175.12.225",
+      "dest_port": 22,
+      "anomaly_score": -0.011884303926263606,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 182.160.112.253 tcp dport 5555 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "182.160.112.253",
+      "dest_port": 5555,
+      "anomaly_score": 0.1744870005778945,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 185.73.124.160 tcp dport 5900 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "185.73.124.160",
+      "dest_port": 5900,
+      "anomaly_score": 0.05902297842758236,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 160.44.201.156 tcp dport 56948 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "160.44.201.156",
+      "dest_port": 56948,
+      "anomaly_score": 0.19615491570348992,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 178.128.64.157 tcp dport 50100 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "178.128.64.157",
+      "dest_port": 50100,
+      "anomaly_score": 0.04744975779556909,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 104.131.182.98 tcp dport 9200 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "104.131.182.98",
+      "dest_port": 9200,
+      "anomaly_score": -0.014880354185322575,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 162.216.149.141 tcp dport 8443 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "162.216.149.141",
+      "dest_port": 8443,
+      "anomaly_score": 0.014307506901062916,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 80.158.38.137 tcp dport 47348 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "80.158.38.137",
+      "dest_port": 47348,
+      "anomaly_score": 0.21699203405848494,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 49.12.234.183 tcp dport 50234 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "49.12.234.183",
+      "dest_port": 50234,
+      "anomaly_score": 0.02581714313731004,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 103.216.81.33 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "103.216.81.33",
+      "dest_port": 22,
+      "anomaly_score": -0.016344546118972403,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 168.126.90.210 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "168.126.90.210",
+      "dest_port": 22,
+      "anomaly_score": -0.01949392428139768,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 80.66.76.51 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "80.66.76.51",
+      "dest_port": 22,
+      "anomaly_score": 0.024844687720853742,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 176.126.165.210 tcp dport 5900 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "176.126.165.210",
+      "dest_port": 5900,
+      "anomaly_score": -0.01919093580509179,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 200.37.213.21 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "200.37.213.21",
+      "dest_port": 22,
+      "anomaly_score": -0.018605376481482194,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 193.37.254.131 tcp dport 5432 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "193.37.254.131",
+      "dest_port": 5432,
+      "anomaly_score": 0.02833626145454199,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 113.221.17.166 tcp dport 23 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "113.221.17.166",
+      "dest_port": 23,
+      "anomaly_score": 0.0002222116692019438,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 162.142.125.12 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "162.142.125.12",
+      "dest_port": 22,
+      "anomaly_score": 0.012190594648677111,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 223.18.109.65 tcp dport 34562 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "223.18.109.65",
+      "dest_port": 34562,
+      "anomaly_score": 0.1236125224181534,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 124.235.243.17 tcp dport 23 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "124.235.243.17",
+      "dest_port": 23,
+      "anomaly_score": -0.021197347118135867,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 182.70.118.41 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "182.70.118.41",
+      "dest_port": 22,
+      "anomaly_score": -0.01489488109992193,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 122.104.204.28 tcp dport 5555 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "122.104.204.28",
+      "dest_port": 5555,
+      "anomaly_score": 0.18518410485425546,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 37.32.22.47 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "37.32.22.47",
+      "dest_port": 22,
+      "anomaly_score": 0.11823500832185402,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 222.246.110.49 tcp dport 23 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "222.246.110.49",
+      "dest_port": 23,
+      "anomaly_score": 0.010910082573261315,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 173.254.196.62 tcp dport 5432 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "173.254.196.62",
+      "dest_port": 5432,
+      "anomaly_score": 0.03403112335114794,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 194.170.189.226 tcp dport 1433 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "194.170.189.226",
+      "dest_port": 1433,
+      "anomaly_score": 0.15724517329638482,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 79.124.58.138 tcp dport 5900 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "79.124.58.138",
+      "dest_port": 5900,
+      "anomaly_score": 0.08650119212009416,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 183.237.164.204 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "183.237.164.204",
+      "dest_port": 22,
+      "anomaly_score": -0.018605376481482194,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 45.129.14.51 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "45.129.14.51",
+      "dest_port": 22,
+      "anomaly_score": -0.000780149186107304,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 201.28.105.119 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "201.28.105.119",
+      "dest_port": 22,
+      "anomaly_score": -0.012319720087015096,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 218.206.168.38 tcp dport 1433 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "218.206.168.38",
+      "dest_port": 1433,
+      "anomaly_score": 0.16329557310682646,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 172.105.94.82 tcp dport 46260 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "172.105.94.82",
+      "dest_port": 46260,
+      "anomaly_score": 0.03406884286028905,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 52.44.177.92 tcp dport 34426 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "52.44.177.92",
+      "dest_port": 34426,
+      "anomaly_score": 0.2369917466162444,
+      "action": "BLOCK"
+    },
+    {
+      "command": "nft insert rule inet filter input ip saddr 118.126.142.50 tcp dport 22 drop",
+      "applied": false,
+      "status": "dry_run",
+      "source_ip": "118.126.142.50",
+      "dest_port": 22,
+      "anomaly_score": 0.0021622986272966105,
+      "action": "BLOCK"
+    }
+  ],
+  "dry_run": true
+}

@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Import Logs{% endblock %}
+
+{% block content %}
+
+<!-- Intro card ────────────────────────────────────────────────────── -->
+<div class="card section-gap">
+    <h2>📥 Import Raw Honeypot Capture</h2>
+    <p class="info-text">
+        Upload a raw Wireshark-style packet capture CSV (columns:
+        <code style="color:var(--yellow-main);">No., Time, Source, Destination, Protocol, Length, Info</code>).
+        The pipeline will clean the data, engineer attacker profiles, and split them 70/15/15.
+        Each import is automatically labeled sequentially as <strong>Batch 3, Batch 4, Batch 5…</strong>.
+        Large files (100 MB+) take 1–3 minutes — progress streams in real time below.
+    </p>
+</div>
+
+<!-- Upload zone ────────────────────────────────────────────────────── -->
+<div class="card section-gap" id="upload-card">
+    <h2>📂 Upload CSV</h2>
+
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" accept=".csv" onchange="handleFileSelect(this.files[0])">
+        <div class="upload-icon">📄</div>
+        <h3>Click to select, or drag &amp; drop a CSV here</h3>
+        <p>Wireshark export (latin-1 safe) · Max 500 MB</p>
+        <button class="btn btn-primary" type="button"
+                onclick="event.stopPropagation(); document.getElementById('file-input').click()">
+            Choose File
+        </button>
+    </div>
+
+    <div id="selected-file" style="display:none; margin-top:18px;">
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <span id="file-name" style="color:var(--yellow-main); font-weight:600;"></span>
+            <span id="file-size" style="color:var(--text-muted); font-size:0.85em;"></span>
+            <button class="btn btn-primary" id="upload-btn" onclick="startUpload()">
+                🚀 Start Import
+            </button>
+            <button class="btn btn-ghost" onclick="resetUpload()">✕ Clear</button>
+        </div>
+    </div>
+</div>
+
+<!-- Progress / log ─────────────────────────────────────────────────── -->
+<div class="card section-gap" id="progress-card" style="display:none;">
+    <h2>⚙️ Processing
+        <span id="progress-status-badge" class="badge badge-human" style="font-size:0.6em; margin-left:10px;">RUNNING</span>
+    </h2>
+    <p class="info-text" id="progress-filename" style="margin-bottom:12px;"></p>
+
+    <div class="log-box" id="log-output">Waiting for output…</div>
+
+    <div id="progress-actions" style="display:none; margin-top:16px;">
+        <button class="btn btn-primary" id="train-btn" onclick="startTraining()" style="display:none;">
+            🧠 Run Model Training &amp; Scoring
+        </button>
+        <span id="train-note" style="color:var(--text-muted); font-size:0.85em; margin-left:12px;"></span>
+    </div>
+</div>
+
+<!-- Profile summary ─────────────────────────────────────────────────── -->
+<div class="card section-gap" id="summary-card" style="display:none;">
+    <h2>✅ Profile Summary</h2>
+    <p class="info-text">Attacker profiles extracted from the uploaded capture.</p>
+
+    <div class="summary-tiles" id="summary-tiles"></div>
+</div>
+
+<!-- Deployment outcome card ─────────────────────────────────────────── -->
+<div class="card section-gap" id="deploy-outcome-card" style="display:none; background:rgba(16,185,129,0.06); border-color:rgba(16,185,129,0.35);">
+    <h2 id="deploy-outcome-title" style="border-bottom-color:var(--green); color:var(--green);">🎉 Deployment Successful!</h2>
+    <p class="info-text" style="color:#d4d4d8;" id="deploy-outcome-desc">
+        The candidate rules were deduplicated and deployed to the live system:
+    </p>
+
+    <div class="summary-tiles" id="deploy-tiles" style="margin-bottom:24px;"></div>
+
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <a href="/overview" class="btn btn-primary">📊 View Live Rules in Overview</a>
+        <a href="/analyst-review" class="btn btn-ghost" style="border-color:rgba(255,255,255,0.2);">👤 Review Ambiguous Threats</a>
+    </div>
+</div>
+
+<!-- Pipeline report ─────────────────────────────────────────────────── -->
+<div class="card section-gap" id="report-card" style="display:none;">
+    <h2>📊 Pipeline Report (Inspection Preview)</h2>
+    <p class="info-text">Results from Isolation Forest training and scoring on the imported data.</p>
+
+    <div class="grid" id="report-metrics"></div>
+
+    <div style="margin-top:20px;">
+        <h3 style="color:var(--text-secondary); font-size:0.95em; margin-bottom:12px;">
+            Action Breakdown
+        </h3>
+        <div id="report-breakdown"></div>
+    </div>
+
+    <!-- 1-Click Deploy Section -->
+    <div id="deploy-section" style="margin-top:24px; padding:22px; background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.3); border-radius:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div>
+                <h3 style="color:var(--text-primary); font-size:1.1em; margin-bottom:4px;" id="deploy-header-text">
+                    🛡️ Ready to Deploy to Live System
+                </h3>
+                <p class="info-text" style="margin:0; font-size:0.9em;" id="deploy-description">
+                    Applying will automatically deduplicate candidate IPs, push new BLOCK rules to live nftables, and route ambiguous threats to the Analyst Review queue.
+                </p>
+            </div>
+            <button class="btn btn-primary" id="deploy-btn" onclick="startDeploy()" style="font-size:0.95em; padding:12px 24px;">
+                🚀 Deploy &amp; Sync to Firewall
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ─────────────────────────────────────────────────────────
+let _currentJobId   = null;
+let _currentBatchName = null;
+let _pollInterval   = null;
+let _lastLogLen     = 0;
+let _selectedFile   = null;
+
+// ── Drag-and-drop ─────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+
+dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+});
+
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+});
+
+// ── File select ───────────────────────────────────────────────────
+function handleFileSelect(file) {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        showToast('Only .csv files are accepted', 'err');
+        return;
+    }
+
+    _selectedFile = file;
+
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-size').textContent = formatBytes(file.size);
+    document.getElementById('selected-file').style.display = 'block';
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024)         return bytes + ' B';
+    if (bytes < 1024 * 1024)  return (bytes / 1024).toFixed(1) + ' KB';
+    return                          (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+// ── Upload + kick off job ──────────────────────────────────────────
+async function startUpload() {
+    if (!_selectedFile) return;
+
+    const uploadBtn = document.getElementById('upload-btn');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = '⏳ Uploading…';
+
+    const form = new FormData();
+    form.append('file', _selectedFile);
+
+    try {
+        const resp = await fetch('/api/import/upload', { method: 'POST', body: form });
+        const data = await resp.json();
+
+        if (!resp.ok || !data.ok) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '🚀 Start Import';
+            showToast('Upload failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
+            return;
+        }
+
+        _currentJobId = data.job_id;
+        _currentBatchName = data.batch_name || `Batch ${data.batch_number || 3}`;
+        showProgressCard(_selectedFile.name, _currentBatchName);
+        startPolling();
+
+    } catch (err) {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '🚀 Start Import';
+        showToast('Network error: ' + err.message, 'err');
+    }
+}
+
+// ── Show progress section ─────────────────────────────────────────
+function showProgressCard(filename, batchName) {
+    document.getElementById('progress-card').style.display = 'block';
+    document.getElementById('progress-filename').innerHTML =
+        `Processing: <strong>${filename}</strong> <span class="badge badge-human" style="margin-left:8px;">${batchName}</span>`;
+    document.getElementById('log-output').textContent = 'Waiting for output…';
+    _lastLogLen = 0;
+
+    document.getElementById('progress-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Polling ───────────────────────────────────────────────────────
+function startPolling() {
+    _pollInterval = setInterval(pollJobStatus, 1200);
+}
+
+function stopPolling() {
+    if (_pollInterval) {
+        clearInterval(_pollInterval);
+        _pollInterval = null;
+    }
+}
+
+async function pollJobStatus() {
+    if (!_currentJobId) return;
+
+    try {
+        const resp = await fetch(`/api/import/status/${_currentJobId}`);
+        const data = await resp.json();
+
+        if (!data.ok) {
+            stopPolling();
+            showToast('Job error: ' + data.error, 'err');
+            return;
+        }
+
+        if (data.batch_name) {
+            _currentBatchName = data.batch_name;
+        }
+
+        appendLog(data.log);
+
+        const badge = document.getElementById('progress-status-badge');
+
+        if (data.status === 'error') {
+            stopPolling();
+            badge.textContent = 'ERROR';
+            badge.className   = 'badge badge-block';
+            showToast('Import failed: ' + (data.error ?? 'unknown error'), 'err');
+        }
+
+        else if (data.status === 'profiles_done') {
+            stopPolling();
+            badge.textContent = 'PROFILES DONE';
+            badge.className   = 'badge badge-allow';
+            showToast('✓ Profiles built successfully!', 'ok');
+            renderSummary(data.summary);
+            showTrainButton();
+        }
+
+        else if (data.status === 'training') {
+            badge.textContent = 'TRAINING…';
+            badge.className   = 'badge badge-human';
+        }
+
+        else if (data.status === 'training_done') {
+            stopPolling();
+            badge.textContent = 'SCORED (READY TO DEPLOY)';
+            badge.className   = 'badge badge-allow';
+            showToast('✓ Training & scoring complete! Ready to inspect.', 'ok');
+            renderSummary(data.summary);
+            renderPipelineReport(data.pipeline_report);
+        }
+
+        else if (data.status === 'deployed') {
+            stopPolling();
+            badge.textContent = 'DEPLOYED';
+            badge.className   = 'badge badge-allow';
+            if (data.deploy_summary) {
+                renderDeployOutcome(data.deploy_summary);
+            }
+        }
+
+    } catch (err) {
+        // Network hiccup — keep polling
+    }
+}
+
+function appendLog(lines) {
+    if (!lines || lines.length === 0) return;
+
+    const box    = document.getElementById('log-output');
+    const newLines = lines.slice(_lastLogLen);
+
+    if (newLines.length === 0) return;
+
+    if (_lastLogLen === 0) {
+        box.textContent = '';
+    }
+
+    newLines.forEach(line => {
+        const span = document.createElement('span');
+        if (line.includes('ERROR') || line.includes('error')) {
+            span.className = 'log-err';
+        }
+        span.textContent = line + '\n';
+        box.appendChild(span);
+    });
+
+    box.scrollTop = box.scrollHeight;
+    _lastLogLen = lines.length;
+}
+
+// ── Train button ──────────────────────────────────────────────────
+function showTrainButton() {
+    const actionsEl = document.getElementById('progress-actions');
+    const trainBtn  = document.getElementById('train-btn');
+    const trainNote = document.getElementById('train-note');
+
+    actionsEl.style.display = 'block';
+    trainBtn.style.display  = 'inline-flex';
+    trainNote.textContent   = 'Runs Isolation Forest on the imported profiles (dry-run inspection)';
+}
+
+async function startTraining() {
+    if (!_currentJobId) return;
+
+    const trainBtn = document.getElementById('train-btn');
+    trainBtn.disabled    = true;
+    trainBtn.textContent = '⏳ Training…';
+
+    const badge = document.getElementById('progress-status-badge');
+    badge.textContent = 'TRAINING…';
+    badge.className   = 'badge badge-human';
+
+    document.getElementById('report-card').style.display = 'none';
+    document.getElementById('deploy-outcome-card').style.display = 'none';
+
+    try {
+        const resp = await fetch(`/api/import/train/${_currentJobId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contamination: 0.05 }),
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || !data.ok) {
+            showToast('Training start failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
+            trainBtn.disabled    = false;
+            trainBtn.textContent = '🧠 Retry Training';
+            return;
+        }
+
+        showToast('🧠 Training started — streaming output…', 'info');
+        startPolling();
+
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'err');
+        trainBtn.disabled    = false;
+        trainBtn.textContent = '🧠 Retry Training';
+    }
+}
+
+// ── 1-Click Deploy ────────────────────────────────────────────────
+async function startDeploy() {
+    if (!_currentJobId) return;
+
+    const deployBtn = document.getElementById('deploy-btn');
+    deployBtn.disabled = true;
+    deployBtn.textContent = '⏳ Deploying to Live System…';
+
+    showToast('🚀 Deploying rules to firewall & Analyst Queue…', 'info');
+
+    try {
+        const resp = await fetch(`/api/import/deploy/${_currentJobId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || !data.ok) {
+            deployBtn.disabled = false;
+            deployBtn.textContent = '🚀 Deploy & Sync to Firewall';
+            showToast('Deployment failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
+            return;
+        }
+
+        showToast('✓ Deployment complete! Live firewall and queue updated.', 'ok');
+        deployBtn.textContent = '✓ Deployed';
+
+        const badge = document.getElementById('progress-status-badge');
+        badge.textContent = 'DEPLOYED';
+        badge.className   = 'badge badge-allow';
+
+        renderDeployOutcome(data.summary);
+
+    } catch (err) {
+        deployBtn.disabled = false;
+        deployBtn.textContent = '🚀 Deploy & Sync to Firewall';
+        showToast('Network error: ' + err.message, 'err');
+    }
+}
+
+// ── Render Deploy Outcome ─────────────────────────────────────────
+function renderDeployOutcome(summary) {
+    if (!summary) return;
+
+    const card  = document.getElementById('deploy-outcome-card');
+    const tiles = document.getElementById('deploy-tiles');
+    const title = document.getElementById('deploy-outcome-title');
+    const desc  = document.getElementById('deploy-outcome-desc');
+
+    const batchName = summary.batch_name || _currentBatchName || 'Batch';
+    title.textContent = `🎉 Deployment Successful for ${batchName}!`;
+    desc.textContent = `The candidate rules from ${batchName} were deduplicated and deployed to the live system:`;
+
+    card.style.display = 'block';
+
+    const items = [
+        { val: summary.applied,       lbl: `BLOCK Rules Pushed to Firewall (${batchName})` },
+        { val: summary.escalate_added,lbl: 'Sent to Analyst Review Queue' },
+        { val: summary.deduplicated,  lbl: 'Deduplicated (Already in Active Rules)' },
+        { val: summary.skipped_nan,   lbl: 'Skipped (No Destination Port)' },
+    ];
+
+    tiles.innerHTML = items.map(i => `
+        <div class="summary-tile">
+            <span class="tile-val" style="color:var(--green);">${i.val ?? '0'}</span>
+            <div class="tile-lbl">${i.lbl}</div>
+        </div>
+    `).join('');
+
+    // Hide deploy section once deployed
+    const deploySection = document.getElementById('deploy-section');
+    if (deploySection) deploySection.style.display = 'none';
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Summary tiles ─────────────────────────────────────────────────
+function renderSummary(summary) {
+    if (!summary) return;
+
+    const card  = document.getElementById('summary-card');
+    const tiles = document.getElementById('summary-tiles');
+
+    card.style.display = 'block';
+
+    const items = [
+        { val: summary.total,      lbl: 'Total Profiles' },
+        { val: summary.train,      lbl: 'Train Split'    },
+        { val: summary.validation, lbl: 'Validation'     },
+        { val: summary.holdout,    lbl: 'Holdout'        },
+    ];
+
+    tiles.innerHTML = items.map(i => `
+        <div class="summary-tile">
+            <span class="tile-val">${i.val ?? '—'}</span>
+            <div class="tile-lbl">${i.lbl}</div>
+        </div>
+    `).join('');
+}
+
+// ── Pipeline report ───────────────────────────────────────────────
+function renderPipelineReport(report) {
+    if (!report || !report.metrics) return;
+
+    const card = document.getElementById('report-card');
+    card.style.display = 'block';
+
+    const m  = report.metrics;
+    const bd = m.action_breakdown ?? {};
+
+    document.getElementById('report-metrics').innerHTML = `
+        <div class="card" style="padding:20px;">
+            <div class="metric">
+                <span class="metric-label">Flagging Rate</span>
+                <span class="metric-value highlight">${m.flagging_rate_pct ?? '—'}%</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Silhouette Coefficient</span>
+                <span class="metric-value">${m.silhouette_coefficient?.toFixed(4) ?? '—'}</span>
+            </div>
+        </div>
+        <div class="card" style="padding:20px;">
+            <div class="metric">
+                <span class="metric-label">Avg Anomaly Score</span>
+                <span class="metric-value">${m.anomaly_score_distribution?.mean?.toFixed(4) ?? '—'}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Max Anomaly Score</span>
+                <span class="metric-value score-high">${m.anomaly_score_distribution?.max?.toFixed(4) ?? '—'}</span>
+            </div>
+        </div>
+    `;
+
+    const rows = [
+        { action: 'BLOCK',              cls: 'score-high',   badge: '<span class="badge badge-block">BLOCK (AUTO)</span>', data: bd.BLOCK },
+        { action: 'ESCALATE_TO_ANALYST',cls: 'score-medium', badge: '<span class="badge badge-human">ESCALATE (QUEUE)</span>', data: bd.ESCALATE_TO_ANALYST },
+        { action: 'ALLOW',              cls: 'score-low',    badge: '<span class="badge badge-allow">ALLOW (AUTO)</span>', data: bd.ALLOW },
+    ];
+
+    document.getElementById('report-breakdown').innerHTML = `
+        <table>
+            <thead><tr>
+                <th>Action</th><th>Count</th><th>% of Holdout</th>
+            </tr></thead>
+            <tbody>
+                ${rows.map(r => `
+                    <tr>
+                        <td>${r.badge}</td>
+                        <td class="${r.cls}">${r.data?.count ?? 0}</td>
+                        <td>${r.data?.pct ?? 0}%</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Reset ──────────────────────────────────────────────────────────
+function resetUpload() {
+    stopPolling();
+    _selectedFile     = null;
+    _currentJobId     = null;
+    _currentBatchName = null;
+    _lastLogLen       = 0;
+
+    document.getElementById('file-input').value      = '';
+    document.getElementById('selected-file').style.display  = 'none';
+    document.getElementById('upload-btn').disabled   = false;
+    document.getElementById('upload-btn').textContent = '🚀 Start Import';
+    document.getElementById('progress-card').style.display  = 'none';
+    document.getElementById('summary-card').style.display   = 'none';
+    document.getElementById('report-card').style.display    = 'none';
+    document.getElementById('deploy-outcome-card').style.display = 'none';
+}
+</script>
+{% endblock %}
