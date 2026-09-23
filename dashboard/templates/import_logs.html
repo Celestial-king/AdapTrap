@@ -1,114 +1,181 @@
 {% extends "base.html" %}
 {% block title_suffix %} — Import Logs{% endblock %}
+{% block page_title %}Import Logs{% endblock %}
 
 {% block content %}
 
-<!-- Intro card ────────────────────────────────────────────────────── -->
+<!-- Intro card ──────────────────────────────────────────────────────── -->
 <div class="card section-gap">
-    <h2>📥 Import Raw Honeypot Capture</h2>
-    <p class="info-text">
-        Upload a raw Wireshark-style packet capture CSV (columns:
-        <code style="color:var(--yellow-main);">No., Time, Source, Destination, Protocol, Length, Info</code>).
-        The pipeline will clean the data, engineer attacker profiles, and split them 70/15/15.
-        Each import is automatically labeled sequentially as <strong>Batch 3, Batch 4, Batch 5…</strong>.
-        Large files (100 MB+) take 1–3 minutes — progress streams in real time below.
-    </p>
+    <div class="card-header">
+        <!-- Info icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span class="card-title">Import Raw Honeypot Capture</span>
+    </div>
+    <div class="card-body">
+        <p class="info-text" style="margin-bottom:0;">
+            Upload a raw Wireshark-style packet capture CSV (columns:
+            <code style="font-family:var(--font-mono); color:var(--yellow-main); font-size:0.88em;">No., Time, Source, Destination, Protocol, Length, Info</code>).
+            The pipeline cleans the data, engineers attacker profiles, and splits them 70/15/15.
+            Each import is automatically labeled sequentially as <strong>Batch 3, Batch 4, Batch 5…</strong>.
+            Large files (100 MB+) take 1–3 minutes — progress streams in real time below.
+        </p>
+    </div>
 </div>
 
-<!-- Upload zone ────────────────────────────────────────────────────── -->
+<!-- Upload zone ─────────────────────────────────────────────────────── -->
 <div class="card section-gap" id="upload-card">
-    <h2>📂 Upload CSV</h2>
-
-    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <input type="file" id="file-input" accept=".csv" onchange="handleFileSelect(this.files[0])">
-        <div class="upload-icon">📄</div>
-        <h3>Click to select, or drag &amp; drop a CSV here</h3>
-        <p>Wireshark export (latin-1 safe) · Max 500 MB</p>
-        <button class="btn btn-primary" type="button"
-                onclick="event.stopPropagation(); document.getElementById('file-input').click()">
-            Choose File
-        </button>
+    <div class="card-header">
+        <!-- UploadCloud icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 16 12 12 8 16"/>
+            <line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+        </svg>
+        <span class="card-title">Upload CSV</span>
     </div>
-
-    <div id="selected-file" style="display:none; margin-top:18px;">
-        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-            <span id="file-name" style="color:var(--yellow-main); font-weight:600;"></span>
-            <span id="file-size" style="color:var(--text-muted); font-size:0.85em;"></span>
-            <button class="btn btn-primary" id="upload-btn" onclick="startUpload()">
-                🚀 Start Import
+    <div class="card-body">
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" accept=".csv" onchange="handleFileSelect(this.files[0])">
+            <div class="upload-icon">
+                <!-- Large UploadCloud -->
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+                     stroke="var(--yellow-main)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 16 12 12 8 16"/>
+                    <line x1="12" y1="12" x2="12" y2="21"/>
+                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
+            </div>
+            <h3>Click to select, or drag &amp; drop a CSV here</h3>
+            <p>Wireshark export (latin-1 safe) · Max 500 MB</p>
+            <button class="btn btn-primary" type="button"
+                    onclick="event.stopPropagation(); document.getElementById('file-input').click()">
+                Choose File
             </button>
-            <button class="btn btn-ghost" onclick="resetUpload()">✕ Clear</button>
+        </div>
+
+        <div id="selected-file" style="display:none; margin-top:14px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span id="file-name" style="color:var(--yellow-main); font-weight:600; font-family:var(--font-mono); font-size:0.9em;"></span>
+                <span id="file-size" style="color:var(--text-muted); font-size:0.85em;"></span>
+                <button class="btn btn-primary" id="upload-btn" onclick="startUpload()">
+                    Start Import
+                </button>
+                <button class="btn btn-ghost" onclick="resetUpload()">Clear</button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Progress / log ─────────────────────────────────────────────────── -->
+<!-- Progress / log ───────────────────────────────────────────────────── -->
 <div class="card section-gap" id="progress-card" style="display:none;">
-    <h2>⚙️ Processing
-        <span id="progress-status-badge" class="badge badge-human" style="font-size:0.6em; margin-left:10px;">RUNNING</span>
-    </h2>
-    <p class="info-text" id="progress-filename" style="margin-bottom:12px;"></p>
+    <div class="card-header">
+        <!-- Terminal icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/>
+            <line x1="12" y1="19" x2="20" y2="19"/>
+        </svg>
+        <span class="card-title">Processing</span>
+        <div class="card-header-extra">
+            <span id="progress-status-badge" class="badge badge-human">Running</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="info-text" id="progress-filename" style="margin-bottom:10px;"></p>
+        <div class="log-box" id="log-output">Waiting for output…</div>
 
-    <div class="log-box" id="log-output">Waiting for output…</div>
-
-    <div id="progress-actions" style="display:none; margin-top:16px;">
-        <button class="btn btn-primary" id="train-btn" onclick="startTraining()" style="display:none;">
-            🧠 Run Model Training &amp; Scoring
-        </button>
-        <span id="train-note" style="color:var(--text-muted); font-size:0.85em; margin-left:12px;"></span>
+        <div id="progress-actions" style="display:none; margin-top:12px;">
+            <button class="btn btn-primary" id="train-btn" onclick="startTraining()" style="display:none;">
+                Run Model Training &amp; Scoring
+            </button>
+            <span id="train-note" style="color:var(--text-muted); font-size:0.85em; margin-left:10px;"></span>
+        </div>
     </div>
 </div>
 
-<!-- Profile summary ─────────────────────────────────────────────────── -->
+<!-- Profile summary ──────────────────────────────────────────────────── -->
 <div class="card section-gap" id="summary-card" style="display:none;">
-    <h2>✅ Profile Summary</h2>
-    <p class="info-text">Attacker profiles extracted from the uploaded capture.</p>
-
-    <div class="summary-tiles" id="summary-tiles"></div>
-</div>
-
-<!-- Deployment outcome card ─────────────────────────────────────────── -->
-<div class="card section-gap" id="deploy-outcome-card" style="display:none; background:rgba(16,185,129,0.06); border-color:rgba(16,185,129,0.35);">
-    <h2 id="deploy-outcome-title" style="border-bottom-color:var(--green); color:var(--green);">🎉 Deployment Successful!</h2>
-    <p class="info-text" style="color:#d4d4d8;" id="deploy-outcome-desc">
-        The candidate rules were deduplicated and deployed to the live system:
-    </p>
-
-    <div class="summary-tiles" id="deploy-tiles" style="margin-bottom:24px;"></div>
-
-    <div style="display:flex; gap:14px; flex-wrap:wrap;">
-        <a href="/overview" class="btn btn-primary">📊 View Live Rules in Overview</a>
-        <a href="/analyst-review" class="btn btn-ghost" style="border-color:rgba(255,255,255,0.2);">👤 Review Ambiguous Threats</a>
+    <div class="card-header">
+        <!-- Users icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="card-title">Profile Summary</span>
+    </div>
+    <div class="card-body">
+        <p class="info-text">Attacker profiles extracted from the uploaded capture.</p>
+        <div class="summary-tiles" id="summary-tiles"></div>
     </div>
 </div>
 
-<!-- Pipeline report ─────────────────────────────────────────────────── -->
+<!-- Deployment outcome ───────────────────────────────────────────────── -->
+<div class="card section-gap" id="deploy-outcome-card" style="display:none;">
+    <div class="card-header">
+        <!-- CheckCircle icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span class="card-title" id="deploy-outcome-title">Deployment Successful</span>
+    </div>
+    <div class="card-body">
+        <p class="info-text" id="deploy-outcome-desc">
+            The candidate rules were deduplicated and deployed to the live system:
+        </p>
+        <div class="summary-tiles" id="deploy-tiles" style="margin-bottom:16px;"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="/overview" class="btn btn-primary">View Live Rules</a>
+            <a href="/analyst-review" class="btn btn-ghost">Analyst Review Queue</a>
+        </div>
+    </div>
+</div>
+
+<!-- Pipeline report ──────────────────────────────────────────────────── -->
 <div class="card section-gap" id="report-card" style="display:none;">
-    <h2>📊 Pipeline Report (Inspection Preview)</h2>
-    <p class="info-text">Results from Isolation Forest training and scoring on the imported data.</p>
-
-    <div class="grid" id="report-metrics"></div>
-
-    <div style="margin-top:20px;">
-        <h3 style="color:var(--text-secondary); font-size:0.95em; margin-bottom:12px;">
-            Action Breakdown
-        </h3>
-        <div id="report-breakdown"></div>
+    <div class="card-header">
+        <!-- BarChart icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+        </svg>
+        <span class="card-title">Pipeline Report — Inspection Preview</span>
     </div>
+    <div class="card-body">
+        <p class="info-text">Results from Isolation Forest training and scoring on the imported data.</p>
 
-    <!-- 1-Click Deploy Section -->
-    <div id="deploy-section" style="margin-top:24px; padding:22px; background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.3); border-radius:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div class="grid" id="report-metrics"></div>
+
+        <div style="margin-top:14px;">
+            <p style="font-size:0.82em; font-weight:600; text-transform:uppercase;
+                      letter-spacing:0.07em; color:var(--text-secondary); margin-bottom:8px;">
+                Action Breakdown
+            </p>
+            <div id="report-breakdown"></div>
+        </div>
+
+        <!-- 1-Click Deploy Section -->
+        <div class="deploy-section" id="deploy-section">
             <div>
-                <h3 style="color:var(--text-primary); font-size:1.1em; margin-bottom:4px;" id="deploy-header-text">
-                    🛡️ Ready to Deploy to Live System
-                </h3>
-                <p class="info-text" style="margin:0; font-size:0.9em;" id="deploy-description">
-                    Applying will automatically deduplicate candidate IPs, push new BLOCK rules to live nftables, and route ambiguous threats to the Analyst Review queue.
+                <h3 id="deploy-header-text">Ready to Deploy to Live System</h3>
+                <p id="deploy-description">
+                    Applies deduplication, pushes new BLOCK rules to live nftables,
+                    and routes ambiguous threats to the Analyst Review queue.
                 </p>
             </div>
-            <button class="btn btn-primary" id="deploy-btn" onclick="startDeploy()" style="font-size:0.95em; padding:12px 24px;">
-                🚀 Deploy &amp; Sync to Firewall
+            <button class="btn btn-primary" id="deploy-btn" onclick="startDeploy()">
+                Deploy &amp; Sync to Firewall
             </button>
         </div>
     </div>
@@ -118,14 +185,14 @@
 
 {% block scripts %}
 <script>
-// ── State ─────────────────────────────────────────────────────────
-let _currentJobId   = null;
+// ── State ──────────────────────────────────────────────────────────────
+let _currentJobId     = null;
 let _currentBatchName = null;
-let _pollInterval   = null;
-let _lastLogLen     = 0;
-let _selectedFile   = null;
+let _pollInterval     = null;
+let _lastLogLen       = 0;
+let _selectedFile     = null;
 
-// ── Drag-and-drop ─────────────────────────────────────────────────
+// ── Drag-and-drop ──────────────────────────────────────────────────────
 const dropZone = document.getElementById('drop-zone');
 
 dropZone.addEventListener('dragover', e => {
@@ -144,7 +211,7 @@ dropZone.addEventListener('drop', e => {
     if (file) handleFileSelect(file);
 });
 
-// ── File select ───────────────────────────────────────────────────
+// ── File select ────────────────────────────────────────────────────────
 function handleFileSelect(file) {
     if (!file) return;
 
@@ -161,18 +228,18 @@ function handleFileSelect(file) {
 }
 
 function formatBytes(bytes) {
-    if (bytes < 1024)         return bytes + ' B';
-    if (bytes < 1024 * 1024)  return (bytes / 1024).toFixed(1) + ' KB';
-    return                          (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    if (bytes < 1024)        return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return                        (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
 
-// ── Upload + kick off job ──────────────────────────────────────────
+// ── Upload + kick off job ──────────────────────────────────────────────
 async function startUpload() {
     if (!_selectedFile) return;
 
     const uploadBtn = document.getElementById('upload-btn');
     uploadBtn.disabled = true;
-    uploadBtn.textContent = '⏳ Uploading…';
+    uploadBtn.textContent = 'Uploading…';
 
     const form = new FormData();
     form.append('file', _selectedFile);
@@ -183,44 +250,40 @@ async function startUpload() {
 
         if (!resp.ok || !data.ok) {
             uploadBtn.disabled = false;
-            uploadBtn.textContent = '🚀 Start Import';
+            uploadBtn.textContent = 'Start Import';
             showToast('Upload failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
             return;
         }
 
-        _currentJobId = data.job_id;
+        _currentJobId     = data.job_id;
         _currentBatchName = data.batch_name || `Batch ${data.batch_number || 3}`;
         showProgressCard(_selectedFile.name, _currentBatchName);
         startPolling();
 
     } catch (err) {
         uploadBtn.disabled = false;
-        uploadBtn.textContent = '🚀 Start Import';
+        uploadBtn.textContent = 'Start Import';
         showToast('Network error: ' + err.message, 'err');
     }
 }
 
-// ── Show progress section ─────────────────────────────────────────
+// ── Show progress section ──────────────────────────────────────────────
 function showProgressCard(filename, batchName) {
     document.getElementById('progress-card').style.display = 'block';
     document.getElementById('progress-filename').innerHTML =
-        `Processing: <strong>${filename}</strong> <span class="badge badge-human" style="margin-left:8px;">${batchName}</span>`;
+        `Processing: <strong style="font-family:var(--font-mono);">${filename}</strong>
+         <span class="badge badge-neutral" style="margin-left:6px;">${batchName}</span>`;
     document.getElementById('log-output').textContent = 'Waiting for output…';
     _lastLogLen = 0;
 
     document.getElementById('progress-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Polling ───────────────────────────────────────────────────────
-function startPolling() {
-    _pollInterval = setInterval(pollJobStatus, 1200);
-}
+// ── Polling ────────────────────────────────────────────────────────────
+function startPolling() { _pollInterval = setInterval(pollJobStatus, 1200); }
 
 function stopPolling() {
-    if (_pollInterval) {
-        clearInterval(_pollInterval);
-        _pollInterval = null;
-    }
+    if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
 }
 
 async function pollJobStatus() {
@@ -230,15 +293,9 @@ async function pollJobStatus() {
         const resp = await fetch(`/api/import/status/${_currentJobId}`);
         const data = await resp.json();
 
-        if (!data.ok) {
-            stopPolling();
-            showToast('Job error: ' + data.error, 'err');
-            return;
-        }
+        if (!data.ok) { stopPolling(); showToast('Job error: ' + data.error, 'err'); return; }
 
-        if (data.batch_name) {
-            _currentBatchName = data.batch_name;
-        }
+        if (data.batch_name) _currentBatchName = data.batch_name;
 
         appendLog(data.log);
 
@@ -246,41 +303,35 @@ async function pollJobStatus() {
 
         if (data.status === 'error') {
             stopPolling();
-            badge.textContent = 'ERROR';
+            badge.textContent = 'Error';
             badge.className   = 'badge badge-block';
             showToast('Import failed: ' + (data.error ?? 'unknown error'), 'err');
-        }
 
-        else if (data.status === 'profiles_done') {
+        } else if (data.status === 'profiles_done') {
             stopPolling();
-            badge.textContent = 'PROFILES DONE';
+            badge.textContent = 'Profiles Done';
             badge.className   = 'badge badge-allow';
-            showToast('✓ Profiles built successfully!', 'ok');
+            showToast('Profiles built successfully', 'ok');
             renderSummary(data.summary);
             showTrainButton();
-        }
 
-        else if (data.status === 'training') {
-            badge.textContent = 'TRAINING…';
+        } else if (data.status === 'training') {
+            badge.textContent = 'Training…';
             badge.className   = 'badge badge-human';
-        }
 
-        else if (data.status === 'training_done') {
+        } else if (data.status === 'training_done') {
             stopPolling();
-            badge.textContent = 'SCORED (READY TO DEPLOY)';
+            badge.textContent = 'Ready to Deploy';
             badge.className   = 'badge badge-allow';
-            showToast('✓ Training & scoring complete! Ready to inspect.', 'ok');
+            showToast('Training & scoring complete — ready to inspect', 'ok');
             renderSummary(data.summary);
             renderPipelineReport(data.pipeline_report);
-        }
 
-        else if (data.status === 'deployed') {
+        } else if (data.status === 'deployed') {
             stopPolling();
-            badge.textContent = 'DEPLOYED';
+            badge.textContent = 'Deployed';
             badge.className   = 'badge badge-allow';
-            if (data.deploy_summary) {
-                renderDeployOutcome(data.deploy_summary);
-            }
+            if (data.deploy_summary) renderDeployOutcome(data.deploy_summary);
         }
 
     } catch (err) {
@@ -291,20 +342,15 @@ async function pollJobStatus() {
 function appendLog(lines) {
     if (!lines || lines.length === 0) return;
 
-    const box    = document.getElementById('log-output');
+    const box      = document.getElementById('log-output');
     const newLines = lines.slice(_lastLogLen);
-
     if (newLines.length === 0) return;
 
-    if (_lastLogLen === 0) {
-        box.textContent = '';
-    }
+    if (_lastLogLen === 0) box.textContent = '';
 
     newLines.forEach(line => {
         const span = document.createElement('span');
-        if (line.includes('ERROR') || line.includes('error')) {
-            span.className = 'log-err';
-        }
+        if (line.includes('ERROR') || line.includes('error')) span.className = 'log-err';
         span.textContent = line + '\n';
         box.appendChild(span);
     });
@@ -313,15 +359,12 @@ function appendLog(lines) {
     _lastLogLen = lines.length;
 }
 
-// ── Train button ──────────────────────────────────────────────────
+// ── Train button ───────────────────────────────────────────────────────
 function showTrainButton() {
-    const actionsEl = document.getElementById('progress-actions');
-    const trainBtn  = document.getElementById('train-btn');
-    const trainNote = document.getElementById('train-note');
-
-    actionsEl.style.display = 'block';
-    trainBtn.style.display  = 'inline-flex';
-    trainNote.textContent   = 'Runs Isolation Forest on the imported profiles (dry-run inspection)';
+    document.getElementById('progress-actions').style.display = 'block';
+    document.getElementById('train-btn').style.display = 'inline-flex';
+    document.getElementById('train-note').textContent =
+        'Runs Isolation Forest on the imported profiles (dry-run inspection)';
 }
 
 async function startTraining() {
@@ -329,13 +372,13 @@ async function startTraining() {
 
     const trainBtn = document.getElementById('train-btn');
     trainBtn.disabled    = true;
-    trainBtn.textContent = '⏳ Training…';
+    trainBtn.textContent = 'Training…';
 
     const badge = document.getElementById('progress-status-badge');
-    badge.textContent = 'TRAINING…';
+    badge.textContent = 'Training…';
     badge.className   = 'badge badge-human';
 
-    document.getElementById('report-card').style.display = 'none';
+    document.getElementById('report-card').style.display        = 'none';
     document.getElementById('deploy-outcome-card').style.display = 'none';
 
     try {
@@ -350,29 +393,29 @@ async function startTraining() {
         if (!resp.ok || !data.ok) {
             showToast('Training start failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
             trainBtn.disabled    = false;
-            trainBtn.textContent = '🧠 Retry Training';
+            trainBtn.textContent = 'Retry Training';
             return;
         }
 
-        showToast('🧠 Training started — streaming output…', 'info');
+        showToast('Training started — streaming output…', 'info');
         startPolling();
 
     } catch (err) {
         showToast('Network error: ' + err.message, 'err');
         trainBtn.disabled    = false;
-        trainBtn.textContent = '🧠 Retry Training';
+        trainBtn.textContent = 'Retry Training';
     }
 }
 
-// ── 1-Click Deploy ────────────────────────────────────────────────
+// ── 1-Click Deploy ─────────────────────────────────────────────────────
 async function startDeploy() {
     if (!_currentJobId) return;
 
     const deployBtn = document.getElementById('deploy-btn');
-    deployBtn.disabled = true;
-    deployBtn.textContent = '⏳ Deploying to Live System…';
+    deployBtn.disabled    = true;
+    deployBtn.textContent = 'Deploying…';
 
-    showToast('🚀 Deploying rules to firewall & Analyst Queue…', 'info');
+    showToast('Deploying rules to firewall & Analyst Queue…', 'info');
 
     try {
         const resp = await fetch(`/api/import/deploy/${_currentJobId}`, {
@@ -383,29 +426,29 @@ async function startDeploy() {
         const data = await resp.json();
 
         if (!resp.ok || !data.ok) {
-            deployBtn.disabled = false;
-            deployBtn.textContent = '🚀 Deploy & Sync to Firewall';
+            deployBtn.disabled    = false;
+            deployBtn.textContent = 'Deploy & Sync to Firewall';
             showToast('Deployment failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
             return;
         }
 
-        showToast('✓ Deployment complete! Live firewall and queue updated.', 'ok');
-        deployBtn.textContent = '✓ Deployed';
+        showToast('Deployment complete — live firewall and queue updated', 'ok');
+        deployBtn.textContent = 'Deployed';
 
         const badge = document.getElementById('progress-status-badge');
-        badge.textContent = 'DEPLOYED';
+        badge.textContent = 'Deployed';
         badge.className   = 'badge badge-allow';
 
         renderDeployOutcome(data.summary);
 
     } catch (err) {
-        deployBtn.disabled = false;
-        deployBtn.textContent = '🚀 Deploy & Sync to Firewall';
+        deployBtn.disabled    = false;
+        deployBtn.textContent = 'Deploy & Sync to Firewall';
         showToast('Network error: ' + err.message, 'err');
     }
 }
 
-// ── Render Deploy Outcome ─────────────────────────────────────────
+// ── Render deploy outcome ──────────────────────────────────────────────
 function renderDeployOutcome(summary) {
     if (!summary) return;
 
@@ -415,33 +458,32 @@ function renderDeployOutcome(summary) {
     const desc  = document.getElementById('deploy-outcome-desc');
 
     const batchName = summary.batch_name || _currentBatchName || 'Batch';
-    title.textContent = `🎉 Deployment Successful for ${batchName}!`;
-    desc.textContent = `The candidate rules from ${batchName} were deduplicated and deployed to the live system:`;
+    title.textContent = `Deployment Successful — ${batchName}`;
+    desc.textContent  = `Rules from ${batchName} were deduplicated and deployed to the live system:`;
 
     card.style.display = 'block';
 
     const items = [
-        { val: summary.applied,       lbl: `BLOCK Rules Pushed to Firewall (${batchName})` },
-        { val: summary.escalate_added,lbl: 'Sent to Analyst Review Queue' },
-        { val: summary.deduplicated,  lbl: 'Deduplicated (Already in Active Rules)' },
-        { val: summary.skipped_nan,   lbl: 'Skipped (No Destination Port)' },
+        { val: summary.applied,        lbl: `BLOCK Rules Applied (${batchName})` },
+        { val: summary.escalate_added, lbl: 'Sent to Analyst Queue' },
+        { val: summary.deduplicated,   lbl: 'Deduplicated (Already Active)' },
+        { val: summary.skipped_nan,    lbl: 'Skipped (No Dest Port)' },
     ];
 
     tiles.innerHTML = items.map(i => `
         <div class="summary-tile">
-            <span class="tile-val" style="color:var(--green);">${i.val ?? '0'}</span>
+            <span class="tile-val">${i.val ?? '0'}</span>
             <div class="tile-lbl">${i.lbl}</div>
         </div>
     `).join('');
 
-    // Hide deploy section once deployed
     const deploySection = document.getElementById('deploy-section');
     if (deploySection) deploySection.style.display = 'none';
 
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Summary tiles ─────────────────────────────────────────────────
+// ── Summary tiles ──────────────────────────────────────────────────────
 function renderSummary(summary) {
     if (!summary) return;
 
@@ -465,7 +507,7 @@ function renderSummary(summary) {
     `).join('');
 }
 
-// ── Pipeline report ───────────────────────────────────────────────
+// ── Pipeline report ────────────────────────────────────────────────────
 function renderPipelineReport(report) {
     if (!report || !report.metrics) return;
 
@@ -476,45 +518,57 @@ function renderPipelineReport(report) {
     const bd = m.action_breakdown ?? {};
 
     document.getElementById('report-metrics').innerHTML = `
-        <div class="card" style="padding:20px;">
-            <div class="metric">
-                <span class="metric-label">Flagging Rate</span>
-                <span class="metric-value highlight">${m.flagging_rate_pct ?? '—'}%</span>
+        <div class="card" style="padding:0;">
+            <div class="card-header">
+                <span class="card-title">Model Performance</span>
             </div>
-            <div class="metric">
-                <span class="metric-label">Silhouette Coefficient</span>
-                <span class="metric-value">${m.silhouette_coefficient?.toFixed(4) ?? '—'}</span>
+            <div class="card-body">
+                <div class="metric">
+                    <span class="metric-label">Flagging Rate</span>
+                    <span class="metric-value highlight">${m.flagging_rate_pct ?? '—'}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Silhouette Coefficient</span>
+                    <span class="metric-value">${m.silhouette_coefficient?.toFixed(4) ?? '—'}</span>
+                </div>
             </div>
         </div>
-        <div class="card" style="padding:20px;">
-            <div class="metric">
-                <span class="metric-label">Avg Anomaly Score</span>
-                <span class="metric-value">${m.anomaly_score_distribution?.mean?.toFixed(4) ?? '—'}</span>
+        <div class="card" style="padding:0;">
+            <div class="card-header">
+                <span class="card-title">Anomaly Score Distribution</span>
             </div>
-            <div class="metric">
-                <span class="metric-label">Max Anomaly Score</span>
-                <span class="metric-value score-high">${m.anomaly_score_distribution?.max?.toFixed(4) ?? '—'}</span>
+            <div class="card-body">
+                <div class="metric">
+                    <span class="metric-label">Mean Score</span>
+                    <span class="metric-value">${m.anomaly_score_distribution?.mean?.toFixed(4) ?? '—'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Max Score</span>
+                    <span class="metric-value score-high">${m.anomaly_score_distribution?.max?.toFixed(4) ?? '—'}</span>
+                </div>
             </div>
         </div>
     `;
 
     const rows = [
-        { action: 'BLOCK',              cls: 'score-high',   badge: '<span class="badge badge-block">BLOCK (AUTO)</span>', data: bd.BLOCK },
-        { action: 'ESCALATE_TO_ANALYST',cls: 'score-medium', badge: '<span class="badge badge-human">ESCALATE (QUEUE)</span>', data: bd.ESCALATE_TO_ANALYST },
-        { action: 'ALLOW',              cls: 'score-low',    badge: '<span class="badge badge-allow">ALLOW (AUTO)</span>', data: bd.ALLOW },
+        { badge: '<span class="badge badge-block">Block (Auto)</span>',   cls: 'score-high',   data: bd.BLOCK },
+        { badge: '<span class="badge badge-human">Escalate (Queue)</span>', cls: 'score-medium', data: bd.ESCALATE_TO_ANALYST },
+        { badge: '<span class="badge badge-allow">Allow (Auto)</span>',   cls: 'score-low',    data: bd.ALLOW },
     ];
 
     document.getElementById('report-breakdown').innerHTML = `
         <table>
             <thead><tr>
-                <th>Action</th><th>Count</th><th>% of Holdout</th>
+                <th>Action</th>
+                <th class="num">Count</th>
+                <th class="num">% of Holdout</th>
             </tr></thead>
             <tbody>
                 ${rows.map(r => `
                     <tr>
                         <td>${r.badge}</td>
-                        <td class="${r.cls}">${r.data?.count ?? 0}</td>
-                        <td>${r.data?.pct ?? 0}%</td>
+                        <td class="mono num ${r.cls}">${r.data?.count ?? 0}</td>
+                        <td class="mono num">${r.data?.pct ?? 0}%</td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -524,7 +578,7 @@ function renderPipelineReport(report) {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Reset ──────────────────────────────────────────────────────────
+// ── Reset ──────────────────────────────────────────────────────────────
 function resetUpload() {
     stopPolling();
     _selectedFile     = null;
@@ -532,14 +586,14 @@ function resetUpload() {
     _currentBatchName = null;
     _lastLogLen       = 0;
 
-    document.getElementById('file-input').value      = '';
-    document.getElementById('selected-file').style.display  = 'none';
-    document.getElementById('upload-btn').disabled   = false;
-    document.getElementById('upload-btn').textContent = '🚀 Start Import';
-    document.getElementById('progress-card').style.display  = 'none';
-    document.getElementById('summary-card').style.display   = 'none';
-    document.getElementById('report-card').style.display    = 'none';
-    document.getElementById('deploy-outcome-card').style.display = 'none';
+    document.getElementById('file-input').value                      = '';
+    document.getElementById('selected-file').style.display           = 'none';
+    document.getElementById('upload-btn').disabled                   = false;
+    document.getElementById('upload-btn').textContent                = 'Start Import';
+    document.getElementById('progress-card').style.display           = 'none';
+    document.getElementById('summary-card').style.display            = 'none';
+    document.getElementById('report-card').style.display             = 'none';
+    document.getElementById('deploy-outcome-card').style.display     = 'none';
 }
 </script>
 {% endblock %}

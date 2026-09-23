@@ -1,128 +1,208 @@
 {% extends "base.html" %}
 {% block title_suffix %} — Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
 
 {% block content %}
 
-<!-- Automation Workflow ─────────────────────────────────────────── -->
+<!-- Automation Workflow ──────────────────────────────────────────────── -->
 <div class="card section-gap">
-    <h2>🔄 Automation Workflow</h2>
-    <div class="workflow-visual">
-        <div class="workflow-step workflow-auto">
-            <div class="icon">🤖</div>
-            <h3>AUTO-BLOCK</h3>
-            <p><strong>≥90th Percentile</strong></p>
-            <p>High-confidence threats</p>
-            <p>Instantly applied to firewall</p>
-            <p><strong>ZERO human intervention</strong></p>
-        </div>
-        <div class="workflow-step workflow-human">
-            <div class="icon">👤</div>
-            <h3>ANALYST REVIEW</h3>
-            <p><strong>70th–90th Percentile</strong></p>
-            <p>Ambiguous threats</p>
-            <p>Queue for human decision</p>
-            <p><strong>Manual approval required</strong></p>
-        </div>
-        <div class="workflow-step workflow-auto">
-            <div class="icon">✓</div>
-            <h3>AUTO-ALLOW</h3>
-            <p><strong>&lt;70th Percentile</strong></p>
-            <p>Low-risk profiles</p>
-            <p>Automatically allowed</p>
-            <p><strong>ZERO human intervention</strong></p>
+    <div class="card-header">
+        <!-- GitBranch icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/>
+            <circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+        </svg>
+        <span class="card-title">Automation Workflow</span>
+    </div>
+    <div class="card-body">
+        <div class="workflow-visual">
+            <div class="workflow-step workflow-auto">
+                <div class="workflow-step-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                </div>
+                <h3>Auto-Block</h3>
+                <p><strong>≥90th Percentile</strong></p>
+                <p>High-confidence threats</p>
+                <p>Instantly applied to firewall</p>
+                <p><strong>Zero human intervention</strong></p>
+            </div>
+            <div class="workflow-step workflow-human">
+                <div class="workflow-step-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <h3>Analyst Review</h3>
+                <p><strong>70th–90th Percentile</strong></p>
+                <p>Ambiguous threats</p>
+                <p>Queue for human decision</p>
+                <p><strong>Manual approval required</strong></p>
+            </div>
+            <div class="workflow-step workflow-auto">
+                <div class="workflow-step-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <h3>Auto-Allow</h3>
+                <p><strong>&lt;70th Percentile</strong></p>
+                <p>Low-risk profiles</p>
+                <p>Automatically allowed</p>
+                <p><strong>Zero human intervention</strong></p>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Firewall Status + Automation Metrics + Threat Breakdown ────── -->
+<!-- Firewall Status · Automation Metrics · Threat Breakdown ─────────── -->
 <div class="grid section-gap">
     <div class="card">
-        <h2>🛡️ Firewall Status</h2>
-        <div class="metric">
-            <span class="metric-label">Total Active Rules</span>
-            <span class="metric-value highlight" id="total-rules">—</span>
+        <div class="card-header">
+            <!-- Shield icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span class="card-title">Firewall Status</span>
         </div>
-        <div id="batch-metrics-container">
+        <div class="card-body">
             <div class="metric">
-                <span class="metric-label">Batch 1 Rules</span>
-                <span class="metric-value" id="batch1-rules">—</span>
+                <span class="metric-label">Total Active Rules</span>
+                <span class="metric-value highlight" id="total-rules">—</span>
+            </div>
+            <div id="batch-metrics-container">
+                <div class="metric">
+                    <span class="metric-label">Batch 1 Rules</span>
+                    <span class="metric-value" id="batch1-rules">—</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Batch 2 Rules</span>
+                    <span class="metric-value" id="batch2-rules">—</span>
+                </div>
             </div>
             <div class="metric">
-                <span class="metric-label">Batch 2 Rules</span>
-                <span class="metric-value" id="batch2-rules">—</span>
+                <span class="metric-label">Last Auto-Applied</span>
+                <span class="metric-value" id="last-applied"
+                      style="font-size:0.88em; font-family:var(--font-mono);">—</span>
             </div>
-        </div>
-        <div class="metric">
-            <span class="metric-label">Last Auto-Applied</span>
-            <span class="metric-value" id="last-applied" style="font-size:0.88em;">—</span>
-        </div>
-        <button class="btn btn-primary" style="margin-top:20px;" onclick="refreshData()">
-            🔄 Refresh Data
-        </button>
-    </div>
-
-    <div class="card">
-        <h2>📊 Automation Metrics</h2>
-        <div class="metric">
-            <span class="metric-label">
-                <span class="auto-indicator">🤖</span>Automation Rate
-            </span>
-            <span class="metric-value highlight" id="automation-rate">—</span>
-        </div>
-        <div class="metric">
-            <span class="metric-label">
-                <span class="auto-indicator">🤖</span>Zero-Touch Blocks
-            </span>
-            <span class="metric-value score-high" id="zero-touch-blocks">—</span>
-        </div>
-        <div class="metric">
-            <span class="metric-label">
-                <span class="auto-indicator">👤</span>Analyst Queue Depth
-            </span>
-            <span class="metric-value score-medium" id="analyst-queue">—</span>
+            <div style="margin-top:14px;">
+                <button class="btn btn-primary" onclick="refreshData()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Refresh Data
+                </button>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <h2>⚡ Threat Decision Breakdown</h2>
-        <div class="metric">
-            <span class="metric-label">
-                BLOCK Actions
-                <span class="badge badge-auto">🤖 AUTOMATED</span>
-                <span class="percentile-label">≥90th percentile</span>
-            </span>
-            <span class="metric-value score-high" id="block-count">—</span>
+        <div class="card-header">
+            <!-- Activity icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            <span class="card-title">Automation Metrics</span>
         </div>
-        <div class="metric">
-            <span class="metric-label">
-                ESCALATE Actions
-                <span class="badge badge-human">👤 HUMAN REVIEW</span>
-                <span class="percentile-label">70th–90th percentile</span>
-            </span>
-            <span class="metric-value score-medium" id="escalate-count">—</span>
+        <div class="card-body">
+            <div class="metric">
+                <span class="metric-label">Automation Rate</span>
+                <span class="metric-value highlight" id="automation-rate">—</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Zero-Touch Blocks</span>
+                <span class="metric-value score-high" id="zero-touch-blocks">—</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Analyst Queue Depth</span>
+                <span class="metric-value score-medium" id="analyst-queue">—</span>
+            </div>
         </div>
-        <div class="metric">
-            <span class="metric-label">
-                ALLOW Actions
-                <span class="badge badge-auto">🤖 AUTOMATED</span>
-                <span class="percentile-label">&lt;70th percentile</span>
-            </span>
-            <span class="metric-value score-low" id="allow-count">—</span>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <!-- PieChart icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+            </svg>
+            <span class="card-title">Threat Decision Breakdown</span>
+        </div>
+        <div class="card-body">
+            <div class="metric">
+                <span class="metric-label">
+                    Block Actions
+                    <span class="badge badge-block">Auto</span>
+                    <span class="percentile-label">≥90th percentile</span>
+                </span>
+                <span class="metric-value score-high" id="block-count">—</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">
+                    Escalate Actions
+                    <span class="badge badge-human">Human</span>
+                    <span class="percentile-label">70th–90th percentile</span>
+                </span>
+                <span class="metric-value score-medium" id="escalate-count">—</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">
+                    Allow Actions
+                    <span class="badge badge-allow">Auto</span>
+                    <span class="percentile-label">&lt;70th percentile</span>
+                </span>
+                <span class="metric-value score-low" id="allow-count">—</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Automated BLOCK Rules table ──────────────────────────────────── -->
+<!-- Automated BLOCK Rules table ─────────────────────────────────────── -->
 <div class="card section-gap">
-    <h2>🤖 Automated BLOCK Rules (Applied to Firewall)</h2>
-    <div id="rules-table"><div class="loading">Loading rules…</div></div>
+    <div class="card-header">
+        <!-- List icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+        <span class="card-title">Automated Block Rules — Applied to Firewall</span>
+    </div>
+    <div class="card-body">
+        <div id="rules-table"><div class="loading">Loading rules…</div></div>
+    </div>
 </div>
 
-<!-- Attack Patterns chart ─────────────────────────────────────────── -->
+<!-- Attack Patterns chart ────────────────────────────────────────────── -->
 <div class="card">
-    <h2>📈 Attack Patterns</h2>
-    <div class="chart-container">
-        <canvas id="attackChart"></canvas>
+    <div class="card-header">
+        <!-- BarChart2 icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+        </svg>
+        <span class="card-title">Attack Patterns</span>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            <canvas id="attackChart"></canvas>
+        </div>
     </div>
 </div>
 
@@ -197,10 +277,10 @@ async function updateAttackPatterns() {
             datasets: [{
                 label: 'Attack Count',
                 data: counts,
-                backgroundColor: 'rgba(245,166,35,0.55)',
-                borderColor:     'rgba(245,197,24,0.9)',
-                borderWidth: 2,
-                borderRadius: 4,
+                backgroundColor: 'rgba(245,166,35,0.45)',
+                borderColor:     'rgba(245,197,24,0.85)',
+                borderWidth: 1,
+                borderRadius: 3,
             }]
         },
         options: {
@@ -209,12 +289,12 @@ async function updateAttackPatterns() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks:  { stepSize: 1, color: '#888' },
-                    grid:   { color: '#1e1e1e' }
+                    ticks:  { stepSize: 1, color: '#666', font: { size: 11 } },
+                    grid:   { color: '#181818' }
                 },
                 x: {
-                    ticks: { color: '#888' },
-                    grid:  { color: '#1e1e1e' }
+                    ticks: { color: '#666', font: { size: 11 } },
+                    grid:  { color: '#181818' }
                 }
             },
             plugins: { legend: { display: false } }
@@ -228,13 +308,17 @@ async function updateRulesTable() {
 
     const top = data.rules.slice(0, 50);
     let html = `
-        <p class="info-text success-text">
-            ✓ ${data.total} BLOCK rules currently active in nftables firewall
+        <p class="info-text" style="margin-bottom:10px;">
+            <span class="success-text">${data.total} BLOCK rules</span>
+            currently active in nftables
         </p>
-        <table>
+        <table data-sortable>
             <thead><tr>
-                <th>Batch</th><th>Source IP</th><th>Port</th>
-                <th>Anomaly Score</th><th>Status</th>
+                <th data-sort="">Batch</th>
+                <th data-sort="">Source IP</th>
+                <th class="num" data-sort="">Port</th>
+                <th class="num" data-sort="">Anomaly Score</th>
+                <th>Status</th>
             </tr></thead>
             <tbody>
     `;
@@ -243,11 +327,11 @@ async function updateRulesTable() {
                   : rule.score > 0   ? 'score-medium' : 'score-low';
         html += `
             <tr>
-                <td><span class="badge badge-human">${rule.batch}</span></td>
-                <td><strong>${rule.ip}</strong></td>
-                <td>${rule.port ?? '—'}</td>
-                <td class="${cls}">${rule.score.toFixed(4)}</td>
-                <td><span class="success-text">🤖 Applied</span></td>
+                <td><span class="badge badge-neutral">${rule.batch}</span></td>
+                <td class="mono">${rule.ip}</td>
+                <td class="mono num">${rule.port ?? '—'}</td>
+                <td class="mono num ${cls}">${rule.score.toFixed(4)}</td>
+                <td class="success-text" style="font-size:0.82em;">Applied</td>
             </tr>
         `;
     });
