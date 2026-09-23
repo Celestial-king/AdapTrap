@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdapTrap{% block title_suffix %}{% endblock %}</title>
+
+    <!-- JetBrains Mono — loaded before render so monospace columns don't FOUT -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ── Reset ─────────────────────────────────────────────────────── */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ── Design tokens ──────────────────────────────────────────────── */
+        :root {
+            --bg-page:        #0a0a0a;
+            --bg-card:        #111111;
+            --bg-sidebar:     #0d0d0d;
+            --bg-topbar:      #0d0d0d;
+
+            --border:         #1e1e1e;
+            --border-panel:   #1e1e1e;   /* thin rule separating panel header from body */
+
+            /* yellow accent — used sparingly */
+            --yellow-bright:  #f5c518;
+            --yellow-main:    #f5a623;
+            --yellow-dim:     #b87a10;
+            --yellow-subtle:  rgba(245, 166, 35, 0.08);
+
+            /* semantic status (BLOCK / ESCALATE / ALLOW — keep as-is) */
+            --red:    #ef4444;
+            --amber:  #f59e0b;
+            --green:  #10b981;
+
+            /* text scale */
+            --text-primary:   #f0f0f0;
+            --text-secondary: #a0a0a0;
+            --text-muted:     #555555;
+
+            /* shape */
+            --radius-card: 6px;
+            --radius-btn:  5px;
+
+            /* mono stack — JetBrains loaded above; fallbacks cover offline defense machine */
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+        }
+
+        /* ── Base typography ────────────────────────────────────────────── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        /* ── App shell: sidebar + main ──────────────────────────────────── */
+        .app-shell {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar ────────────────────────────────────────────────────── */
+        .sidebar {
+            width: 210px;
+            min-width: 210px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 16px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-brand img {
+            height: 32px;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar-brand-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .sidebar-brand-name {
+            font-size: 0.95em;
+            font-weight: 700;
+            color: var(--yellow-main);
+            letter-spacing: 0.01em;
+        }
+
+        .sidebar-brand-sub {
+            font-size: 0.7em;
+            color: var(--text-muted);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 10px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            font-size: 0.88em;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: color 0.15s, background 0.15s, border-color 0.15s;
+        }
+
+        .sidebar-nav a:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .sidebar-nav a.active {
+            color: var(--yellow-main);
+            background: var(--yellow-subtle);
+            border-left-color: var(--yellow-main);
+        }
+
+        .sidebar-nav a svg {
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+
+        .sidebar-nav a.active svg,
+        .sidebar-nav a:hover svg {
+            opacity: 1;
+        }
+
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 0.72em;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ── Main area ──────────────────────────────────────────────────── */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Top bar ────────────────────────────────────────────────────── */
+        .topbar {
+            height: 44px;
+            min-height: 44px;
+            background: var(--bg-topbar);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 14px;
+        }
+
+        .topbar-breadcrumb {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .topbar-breadcrumb .crumb-root {
+            color: var(--text-muted);
+        }
+
+        .topbar-breadcrumb .crumb-sep {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        .topbar-breadcrumb .crumb-current {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .topbar-spacer { flex: 1; }
+
+        .topbar-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.78em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--green);
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 4px;
+            padding: 3px 9px;
+        }
+
+        .topbar-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            flex-shrink: 0;
+        }
+
+        .topbar-timestamp {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Scrollable content area ────────────────────────────────────── */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px 36px;
+        }
+
+        /* ── Cards / panels ─────────────────────────────────────────────── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            overflow: hidden;   /* panel-header sits flush to card edges */
+        }
+
+        /* Panel header — small-caps label style, thin bottom rule */
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-panel);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .card-header svg {
+            opacity: 0.55;
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            font-size: 0.88em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--text-secondary);
+        }
+
+        .card-header-extra {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        /* Legacy .section-gap replacement */
+        .section-gap { margin-bottom: 16px; }
+
+        /* ── Grid layouts ───────────────────────────────────────────────── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* ── Metrics ────────────────────────────────────────────────────── */
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric:last-child { border-bottom: none; }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.88em;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .metric-value {
+            color: var(--text-primary);
+            font-size: 1.55em;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* amber only for the key numbers that need to draw the eye */
+        .metric-value.highlight { color: var(--yellow-main); }
+
+        /* ── Score tier colours (semantic — keep as-is) ─────────────────── */
+        .score-high   { color: var(--red);   font-weight: 600; }
+        .score-medium { color: var(--amber); font-weight: 600; }
+        .score-low    { color: var(--green); font-weight: 600; }
+
+        /* ── Tables ─────────────────────────────────────────────────────── */
+        table { width: 100%; border-collapse: collapse; }
+
+        th, td {
+            padding: 7px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.78em;
+            letter-spacing: 0.07em;
+            white-space: nowrap;
+        }
+
+        /* sortable column headers */
+        th[data-sort] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th[data-sort]:hover { color: var(--text-primary); }
+
+        th[data-sort]::after {
+            content: ' ↕';
+            color: var(--text-muted);
+            font-size: 0.8em;
+        }
+
+        th[data-sort="asc"]::after  { content: ' ↑'; color: var(--yellow-main); }
+        th[data-sort="desc"]::after { content: ' ↓'; color: var(--yellow-main); }
+
+        /* zebra striping */
+        tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.018); }
+        tbody tr:hover            { background: rgba(245, 166, 35, 0.04); }
+
+        td { color: #c8c8c8; font-size: 0.88em; }
+
+        /* monospace cells — IP addresses, ports, scores */
+        td.mono {
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+        }
+
+        /* right-align numeric columns */
+        td.num, th.num { text-align: right; }
+
+        /* ── Buttons ────────────────────────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: var(--radius-btn);
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            border: none;
+            transition: opacity 0.15s, box-shadow 0.15s;
+            text-decoration: none;
+            letter-spacing: 0.01em;
+        }
+
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* primary — amber, used for main CTAs only */
+        .btn-primary {
+            background: var(--yellow-main);
+            color: #000;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.35);
+        }
+
+        /* danger — semantic: Block action */
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        /* success — semantic: Allow action */
+        .btn-success {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 0.22);
+        }
+
+        /* ghost — secondary actions */
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover:not(:disabled) {
+            color: var(--text-primary);
+            border-color: #333;
+        }
+
+        /* ── Badges ─────────────────────────────────────────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-size: 0.72em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* semantic badges — color is meaningful here */
+        .badge-block  { background: rgba(239, 68, 68, 0.15);   color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
+        .badge-human  { background: rgba(245, 158, 11, 0.12);  color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+        .badge-allow  { background: rgba(16, 185, 129, 0.12);  color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+        .badge-auto   { background: rgba(16, 185, 129, 0.12);  color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+        .badge-neutral { background: rgba(255,255,255,0.06);   color: var(--text-secondary); border: 1px solid var(--border); }
+
+        /* ── Info / state text ──────────────────────────────────────────── */
+        .info-text    { color: var(--text-secondary); margin-bottom: 12px; line-height: 1.6; font-size: 0.9em; }
+        .info-text strong { color: var(--text-primary); }
+        .success-text { color: var(--green);  font-weight: 600; }
+        .warning-text { color: var(--amber);  font-weight: 600; }
+        .error-text   { color: var(--red);    font-weight: 600; }
+
+        .loading { text-align: center; padding: 28px; color: var(--text-muted); font-size: 0.88em; }
+
+        /* ── Toast notifications ────────────────────────────────────────── */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            padding: 11px 16px;
+            border-radius: 5px;
+            font-size: 0.88em;
+            font-weight: 500;
+            max-width: 340px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            animation: toast-in 0.2s ease forwards;
+            pointer-events: auto;
+            border-left: 3px solid transparent;
+        }
+
+        .toast-ok  { background: #0d1f16; color: var(--green); border-color: var(--green); }
+        .toast-err { background: #1f0d0d; color: var(--red);   border-color: var(--red); }
+        .toast-info { background: #181200; color: var(--yellow-main); border-color: var(--yellow-main); }
+
+        @keyframes toast-in  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+        @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(20px); } }
+
+        /* ── Chart container ────────────────────────────────────────────── */
+        .chart-container { position: relative; height: 260px; margin-top: 12px; }
+
+        /* ── Workflow visual ────────────────────────────────────────────── */
+        .workflow-visual {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 4px 0;
+        }
+
+        .workflow-step {
+            padding: 16px;
+            border-radius: var(--radius-card);
+            border: 1px solid;
+        }
+
+        .workflow-auto  { background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.25); }
+        .workflow-human { background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.25); }
+
+        .workflow-step-icon { margin-bottom: 8px; opacity: 0.7; }
+        .workflow-step h3   { font-size: 0.82em; font-weight: 700; text-transform: uppercase;
+                               letter-spacing: 0.07em; margin-bottom: 8px; color: var(--text-primary); }
+        .workflow-step p    { font-size: 0.83em; margin: 4px 0; color: var(--text-secondary); }
+        .workflow-step p strong { color: var(--text-primary); }
+
+        .percentile-label {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Log output (Import tab) ────────────────────────────────────── */
+        .log-box {
+            background: #050505;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px 14px;
+            font-family: var(--font-mono);
+            font-size: 0.82em;
+            color: #88cc44;
+            max-height: 320px;
+            overflow-y: auto;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-box .log-err { color: var(--red); }
+
+        /* ── Upload zone ────────────────────────────────────────────────── */
+        .upload-zone {
+            border: 1px dashed rgba(245, 166, 35, 0.4);
+            border-radius: var(--radius-card);
+            padding: 36px 24px;
+            text-align: center;
+            background: rgba(245, 166, 35, 0.02);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            background: rgba(245, 166, 35, 0.06);
+            border-color: var(--yellow-main);
+        }
+
+        .upload-zone input[type=file] { display: none; }
+        .upload-zone h3 { font-size: 0.95em; color: var(--text-primary); margin-bottom: 6px; }
+        .upload-zone p  { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 16px; }
+
+        .upload-icon { margin-bottom: 12px; opacity: 0.6; }
+
+        /* ── Summary tiles ──────────────────────────────────────────────── */
+        .summary-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .summary-tile {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 14px 12px;
+            text-align: center;
+        }
+
+        .summary-tile .tile-val {
+            font-size: 1.7em;
+            font-weight: 800;
+            color: var(--yellow-main);
+            display: block;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .summary-tile .tile-lbl {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        /* ── Queue items (Analyst Review) ───────────────────────────────── */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            margin-bottom: 8px;
+        }
+
+        .queue-ip    { font-family: var(--font-mono); font-size: 0.88em; font-weight: 600; color: var(--text-primary); flex: 1; }
+        .queue-port  { font-family: var(--font-mono); font-size: 0.85em; color: var(--text-secondary); min-width: 70px; }
+        .queue-score { font-family: var(--font-mono); font-size: 0.85em; min-width: 90px; text-align: right; }
+        .queue-actions { display: flex; gap: 6px; }
+
+        /* ── Inline deploy section ──────────────────────────────────────── */
+        .deploy-section {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(245, 166, 35, 0.04);
+            border: 1px solid rgba(245, 166, 35, 0.2);
+            border-radius: var(--radius-card);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .deploy-section h3 {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+
+        .deploy-section p {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+    <!-- ── Sidebar ───────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="/static/logo.png" alt="AdapTrap">
+            <div class="sidebar-brand-text">
+                <span class="sidebar-brand-name">AdapTrap</span>
+                <span class="sidebar-brand-sub">Firewall AI</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/overview" class="{{ 'active' if active_tab == 'overview' else '' }}">
+                <!-- Shield icon -->
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Overview
+            </a>
+            <a href="/analyst-review" class="{{ 'active' if active_tab == 'analyst_review' else '' }}">
+                <!-- UserCheck icon -->
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <polyline points="16 11 18 13 22 9"/>
+                </svg>
+                Analyst Review
+            </a>
+            <a href="/import-logs" class="{{ 'active' if active_tab == 'import_logs' else '' }}">
+                <!-- UploadCloud icon -->
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 16 12 12 8 16"/>
+                    <line x1="12" y1="12" x2="12" y2="21"/>
+                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
+                Import Logs
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            Team Monolith<br>
+            Asia Pacific College<br>
+            BS CS · AY 2025–2026
+        </div>
+    </aside>
+
+    <!-- ── Main area ─────────────────────────────────────────────────── -->
+    <div class="main-area">
+
+        <!-- ── Top bar ───────────────────────────────────────────────── -->
+        <div class="topbar">
+            <div class="topbar-breadcrumb">
+                <span class="crumb-root">AdapTrap</span>
+                <span class="crumb-sep">/</span>
+                <span class="crumb-current">{% block page_title %}Dashboard{% endblock %}</span>
+            </div>
+            <div class="topbar-spacer"></div>
+            <div class="topbar-status" id="firewall-status">
+                <span class="topbar-status-dot"></span>
+                ACTIVE
+            </div>
+            <div class="topbar-timestamp" id="last-update">—</div>
+        </div>
+
+        <!-- ── Page content ──────────────────────────────────────────── -->
+        <div class="content-area">
+            {% block content %}{% endblock %}
+        </div>
+
+    </div><!-- /.main-area -->
+
+</div><!-- /.app-shell -->
+
+<!-- ── Toast container ───────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<script>
+// ── Live timestamp in topbar ───────────────────────────────────────────
+(async function pingStatus() {
+    try {
+        const s = await fetch('/api/status').then(r => r.json());
+        const el = document.getElementById('last-update');
+        if (el && s.timestamp) {
+            el.textContent = 'Updated ' + new Date(s.timestamp).toLocaleTimeString();
+        }
+    } catch(e) {}
+    setTimeout(pingStatus, 30000);
+})();
+
+// ── Toast utility ──────────────────────────────────────────────────────
+function showToast(message, type = 'ok') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'toast-out 0.2s ease forwards';
+        setTimeout(() => toast.remove(), 220);
+    }, 3800);
+}
+
+// ── Table sort ─────────────────────────────────────────────────────────
+// Applied to any <table data-sortable>.
+// Add data-sort="" to <th> cells you want sortable.
+document.addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+
+    const table = th.closest('table[data-sortable]');
+    if (!table) return;
+
+    const tbody  = table.querySelector('tbody');
+    const col    = Array.from(th.parentElement.children).indexOf(th);
+    const curDir = th.getAttribute('data-sort');
+    const newDir = curDir === 'asc' ? 'desc' : 'asc';
+
+    // Reset all headers in this table
+    table.querySelectorAll('th[data-sort]').forEach(h => h.setAttribute('data-sort', ''));
+    th.setAttribute('data-sort', newDir);
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((a, b) => {
+        const aText = a.children[col]?.textContent.trim() ?? '';
+        const bText = b.children[col]?.textContent.trim() ?? '';
+        const aNum  = parseFloat(aText);
+        const bNum  = parseFloat(bText);
+        const cmp   = isNaN(aNum) || isNaN(bNum)
+            ? aText.localeCompare(bText)
+            : aNum - bNum;
+        return newDir === 'asc' ? cmp : -cmp;
+    });
+
+    rows.forEach(r => tbody.appendChild(r));
+});
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

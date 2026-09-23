@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Analyst Review{% endblock %}
+{% block page_title %}Analyst Review{% endblock %}
+
+{% block content %}
+
+<!-- Intro card ──────────────────────────────────────────────────────── -->
+<div class="card section-gap">
+    <div class="card-header">
+        <!-- UserCheck icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <polyline points="16 11 18 13 22 9"/>
+        </svg>
+        <span class="card-title">Analyst Review Queue</span>
+        <div class="card-header-extra">
+            <button class="btn btn-ghost" onclick="loadQueue()" style="padding:4px 10px; font-size:0.8em;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                Refresh
+            </button>
+            <span id="queue-summary" style="color:var(--text-muted); font-size:0.82em;"></span>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="info-text" style="margin-bottom:0;">
+            IPs scoring above the <strong>70th percentile</strong> are placed in this queue
+            for <strong>analyst review</strong>. Review each IP and choose to
+            <strong style="color:var(--red);">Block</strong> or
+            <strong style="color:var(--green);">Allow</strong>.
+        </p>
+    </div>
+</div>
+
+<!-- Pending queue ────────────────────────────────────────────────────── -->
+<div class="card section-gap">
+    <div class="card-header">
+        <!-- Clock icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="card-title">Pending Review</span>
+        <div class="card-header-extra">
+            <span id="pending-badge" class="badge badge-human">— items</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="pending-list">
+            <div class="loading">Loading queue…</div>
+        </div>
+    </div>
+</div>
+
+<!-- Decision log ─────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-header">
+        <!-- CheckSquare icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 11 12 14 22 4"/>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        <span class="card-title">Decision Log</span>
+        <div class="card-header-extra">
+            <span id="reviewed-badge" class="badge badge-allow">— reviewed</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="info-text">
+            Analyst decisions persisted to
+            <code style="font-family:var(--font-mono); color:var(--yellow-main); font-size:0.88em;">reviewed_decisions.json</code>.
+        </p>
+        <div id="reviewed-list">
+            <p style="color:var(--text-muted); font-size:0.88em;">No decisions yet.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Rules ─────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-header">
+        <!-- CheckSquare icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 11 12 14 22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        <span class="card-title">Rule deletion</span>
+        <div class="card-header-extra">
+            <span id="reviewed-badge" class="badge badge-allow">— reviewed</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="info-text">
+            Review the applied firewall rules and decide whether to
+            <strong style="color:var(--red);">Delete</strong> or keep each rule.
+            Decisions are recorded in
+        </p>
+        <div id="reviewed-list">
+            <p style="color:var(--text-muted); font-size:0.88em;">No decisions yet.</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let _pending  = [];
+let _reviewed = [];
+
+// ── XSS-safe HTML escaping ─────────────────────────────────────────────
+function escHtml(s) {
+    return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+}
+
+// ── Render pending queue ───────────────────────────────────────────────
+function renderPending() {
+    const el = document.getElementById('pending-list');
+    document.getElementById('pending-badge').textContent =
+        _pending.length + ' item' + (_pending.length !== 1 ? 's' : '');
+
+    if (_pending.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-muted); font-size:0.88em;">Queue is clear — no items pending.</p>';
+        return;
+    }
+
+    let html = `
+        <table data-sortable>
+            <thead><tr>
+                <th data-sort="">Batch</th>
+                <th data-sort="">Source IP</th>
+                <th class="num" data-sort="">Port</th>
+                <th class="num" data-sort="">Anomaly Score</th>
+                <th>Original Action</th>
+                <th style="text-align:center;">Decision</th>
+            </tr></thead>
+            <tbody id="queue-tbody">
+    `;
+
+    _pending.forEach((item, idx) => {
+        const scoreVal = typeof item.anomaly_score === 'number'
+            ? item.anomaly_score.toFixed(4) : '—';
+        const port     = item.dest_port ?? '—';
+        const batchTag = item.batch || 'Batch 2';
+
+        html += `
+            <tr id="row-${idx}" data-ip="${escHtml(item.source_ip)}" data-port="${port}">
+                <td><span class="badge badge-neutral">${escHtml(batchTag)}</span></td>
+                <td class="mono">${escHtml(item.source_ip)}</td>
+                <td class="mono num">${port}</td>
+                <td class="mono num score-medium">${scoreVal}</td>
+                <td><span class="badge badge-human">Escalate</span></td>
+                <td style="text-align:center;">
+                    <div style="display:flex; gap:6px; justify-content:center;">
+                        <button class="btn btn-danger"
+                                onclick="submitDecision(${idx}, 'block')"
+                                id="btn-block-${idx}">
+                            Block
+                        </button>
+                        <button class="btn btn-success"
+                                onclick="submitDecision(${idx}, 'allow')"
+                                id="btn-allow-${idx}">
+                            Allow
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+// ── Render decision log ────────────────────────────────────────────────
+function renderReviewed() {
+    const el = document.getElementById('reviewed-list');
+    document.getElementById('reviewed-badge').textContent =
+        _reviewed.length + ' reviewed';
+
+    if (_reviewed.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-muted); font-size:0.88em;">No decisions yet.</p>';
+        return;
+    }
+
+    const sorted = [..._reviewed].reverse();
+
+    let html = `
+        <table data-sortable>
+            <thead><tr>
+                <th data-sort="">Decided At</th>
+                <th data-sort="">Batch</th>
+                <th data-sort="">Source IP</th>
+                <th class="num" data-sort="">Port</th>
+                <th>Decision</th>
+                <th>NFT Status</th>
+            </tr></thead>
+            <tbody>
+    `;
+
+    sorted.forEach(r => {
+        const decBadge = r.decision === 'BLOCK'
+            ? '<span class="badge badge-block">Blocked</span>'
+            : '<span class="badge badge-allow">Allowed</span>';
+        const nftBadge = r.nft_applied
+            ? '<span class="success-text" style="font-size:0.85em;">Applied</span>'
+            : (r.decision === 'ALLOW'
+                ? '<span style="color:var(--text-muted); font-size:0.85em;">N/A</span>'
+                : '<span class="error-text" style="font-size:0.85em;">Failed</span>');
+        const ts       = r.timestamp ? new Date(r.timestamp).toLocaleString() : '—';
+        const batchTag = r.batch || 'Analyst Review';
+
+        html += `
+            <tr>
+                <td style="font-size:0.85em; color:var(--text-muted); font-family:var(--font-mono);">${ts}</td>
+                <td><span class="badge badge-neutral">${escHtml(batchTag)}</span></td>
+                <td class="mono">${escHtml(r.source_ip)}</td>
+                <td class="mono num">${r.dest_port ?? '—'}</td>
+                <td>${decBadge}</td>
+                <td>${nftBadge}</td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+// ── Load data from server ──────────────────────────────────────────────
+async function loadQueue() {
+    try {
+        const [qData, rData] = await Promise.all([
+            fetch('/api/escalate_queue').then(r => r.json()),
+            fetch('/api/reviewed_decisions').then(r => r.json()),
+        ]);
+
+        _pending  = qData.queue     ?? [];
+        _reviewed = rData.decisions ?? [];
+
+        document.getElementById('queue-summary').textContent =
+            `${_pending.length} pending · ${_reviewed.length} reviewed`;
+
+        renderPending();
+        renderReviewed();
+    } catch (err) {
+        showToast('Failed to load queue: ' + err.message, 'err');
+    }
+}
+
+// ── Submit analyst decision ────────────────────────────────────────────
+async function submitDecision(idx, decision) {
+    const item = _pending[idx];
+    if (!item) return;
+
+    const btnBlock = document.getElementById(`btn-block-${idx}`);
+    const btnAllow = document.getElementById(`btn-allow-${idx}`);
+    if (btnBlock) btnBlock.disabled = true;
+    if (btnAllow) btnAllow.disabled = true;
+
+    showToast(`${decision === 'block' ? 'Blocking' : 'Allowing'} ${item.source_ip}…`, 'info');
+
+    try {
+        const resp = await fetch('/api/review-decision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source_ip: item.source_ip,
+                dest_port: item.dest_port,
+                decision:  decision,
+                batch:     item.batch || 'Analyst Review',
+            }),
+        });
+
+        const result = await resp.json();
+
+        if (!resp.ok || !result.ok) {
+            showToast('Failed: ' + (result.error ?? `HTTP ${resp.status}`), 'err');
+            if (btnBlock) btnBlock.disabled = false;
+            if (btnAllow) btnAllow.disabled = false;
+            return;
+        }
+
+        _reviewed.push({
+            source_ip:   item.source_ip,
+            dest_port:   item.dest_port,
+            decision:    result.decision,
+            timestamp:   result.timestamp,
+            batch:       result.batch || item.batch || 'Analyst Review',
+            nft_applied: result.nft_details?.applied ?? false,
+        });
+
+        _pending.splice(idx, 1);
+
+        showToast(`${item.source_ip} — ${decision === 'block' ? 'BLOCKED' : 'ALLOWED'}`, 'ok');
+
+        renderPending();
+        renderReviewed();
+
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'err');
+        if (btnBlock) btnBlock.disabled = false;
+        if (btnAllow) btnAllow.disabled = false;
+    }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────
+loadQueue();
+</script>
+{% endblock %}

@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdapTrap Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: #0f0f23;
+            color: #e4e4e7;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid #2a2a3e;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .logo-container {
+            flex-shrink: 0;
+        }
+
+        .logo-container img {
+            height: 100px;
+            width: auto;
+            filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3));
+        }
+
+        .header-content {
+            flex: 1;
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: #a1a1aa;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 28px;
+            border-radius: 16px;
+            border: 1px solid #2a2a3e;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+        }
+
+        .card h2 {
+            color: #fff;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #2a2a3e;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #a1a1aa;
+            font-size: 0.95em;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metric-value {
+            color: #fff;
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+
+        .metric-value.highlight {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #2a2a3e;
+        }
+
+        th {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        td {
+            color: #d4d4d8;
+        }
+
+        .score-high {
+            color: #f87171;
+            font-weight: 700;
+        }
+
+        .score-medium {
+            color: #fbbf24;
+            font-weight: 700;
+        }
+
+        .score-low {
+            color: #34d399;
+            font-weight: 700;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #71717a;
+        }
+
+        .timestamp {
+            color: #71717a;
+            font-size: 0.85em;
+            margin-top: 12px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .automation-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 700;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-automated {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .badge-human {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .workflow-visual {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .workflow-step {
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid;
+            transition: transform 0.2s;
+        }
+
+        .workflow-step:hover {
+            transform: translateY(-4px);
+        }
+
+        .workflow-auto {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: #10b981;
+        }
+
+        .workflow-human {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: #f59e0b;
+        }
+
+        .workflow-step h3 {
+            font-size: 1.3em;
+            margin-bottom: 12px;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .workflow-step p {
+            font-size: 0.9em;
+            margin: 8px 0;
+            color: #a1a1aa;
+        }
+
+        .workflow-step p strong {
+            color: #fff;
+        }
+
+        .workflow-step .icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+        }
+
+        .percentile-label {
+            font-size: 0.75em;
+            color: #71717a;
+            display: block;
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .queue-item {
+            padding: 14px;
+            border: 1px solid #2a2a3e;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            background: rgba(245, 158, 11, 0.05);
+            transition: background 0.2s;
+        }
+
+        .queue-item:hover {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: #f59e0b;
+        }
+
+        .auto-indicator {
+            font-size: 1.3em;
+            margin-right: 6px;
+        }
+
+        .info-text {
+            color: #a1a1aa;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .info-text strong {
+            color: #fff;
+        }
+
+        .success-text {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .warning-text {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="/static/logo.png" alt="AdapTrap Logo">
+            </div>
+            <div class="header-content">
+                <h1>
+                    AdapTrap Dashboard
+                    <span class="status-badge status-active" id="firewall-status">● ACTIVE</span>
+                </h1>
+                <p>Honeypot-Driven Continual Learning for Threat Detection and Firewall Rule Automation</p>
+                <p class="timestamp" id="last-update">Last updated: Loading...</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔄 Automation Workflow</h2>
+            <div class="workflow-visual">
+                <div class="workflow-step workflow-human">
+                    <div class="icon">👤</div>
+                    <h3>ANALYST REVIEW</h3>
+                    <p><strong>Above 70th Percentile</strong></p>
+                    <p>Ambiguous threats</p>
+                    <p>Queue for human decision</p>
+                    <p><strong>Manual approval required</strong></p>
+                </div>
+                <div class="workflow-step workflow-auto">
+                    <div class="icon">✓</div>
+                    <h3>AUTO-ALLOW</h3>
+                    <p><strong>&lt;70th Percentile</strong></p>
+                    <p>Low-risk profiles</p>
+                    <p>Automatically allowed</p>
+                    <p><strong>ZERO human intervention</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>🛡️ Firewall Status</h2>
+                <div class="metric">
+                    <span class="metric-label">Total Active Rules</span>
+                    <span class="metric-value highlight" id="total-rules">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Batch 1 Rules</span>
+                    <span class="metric-value" id="batch1-rules">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Batch 2 Rules</span>
+                    <span class="metric-value" id="batch2-rules">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Last Auto-Applied</span>
+                    <span class="metric-value" id="last-applied" style="font-size: 0.9em;">-</span>
+                </div>
+                <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+            </div>
+
+            <div class="card">
+                <h2>📊 Automation Metrics</h2>
+                <div class="metric">
+                    <span class="metric-label">
+                        <span class="auto-indicator">🤖</span>Automation Rate
+                    </span>
+                    <span class="metric-value highlight" id="automation-rate">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">
+                        <span class="auto-indicator">🤖</span>Zero-Touch Blocks
+                    </span>
+                    <span class="metric-value score-high" id="zero-touch-blocks">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">
+                        <span class="auto-indicator">👤</span>Analyst Queue Depth
+                    </span>
+                    <span class="metric-value score-medium" id="analyst-queue">-</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>⚡ Threat Decision Breakdown</h2>
+                <div class="metric">
+                    <span class="metric-label">
+                        ESCALATE Actions
+                        <span class="automation-badge badge-human">👤 HUMAN REVIEW</span>
+                        <span class="percentile-label">Above 70th percentile</span>
+                    </span>
+                    <span class="metric-value score-medium" id="escalate-count">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">
+                        ALLOW Actions
+                        <span class="automation-badge badge-automated">🤖 AUTOMATED</span>
+                        <span class="percentile-label">&lt;Below 70th percentile</span>
+                    </span>
+                    <span class="metric-value score-low" id="allow-count">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🤖 Automated BLOCK Rules (Applied to Firewall)</h2>
+            <div id="rules-table">
+                <div class="loading">Loading rules...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>👤 Analyst Review Queue (ESCALATE_TO_ANALYST)</h2>
+            <p class="info-text">
+                These threats scored between 70th-90th percentile. They await human analyst review before any action is taken.
+                <strong>NOT automatically blocked.</strong>
+            </p>
+            <div id="escalate-queue">
+                <div class="loading">Loading queue...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Attack Patterns</h2>
+            <div class="chart-container">
+                <canvas id="attackChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let attackChart = null;
+
+        async function fetchData(endpoint) {
+            const response = await fetch(endpoint);
+            return await response.json();
+        }
+
+        async function updateStatus() {
+            const status = await fetchData('/api/status');
+
+            document.getElementById('total-rules').textContent = status.total_active_rules;
+            document.getElementById('batch1-rules').textContent = status.batch1.applied;
+            document.getElementById('batch2-rules').textContent = status.batch2.applied;
+            document.getElementById('last-update').textContent =
+                `Last updated: ${new Date(status.timestamp).toLocaleString()}`;
+
+            // Update automation metrics
+            const autoMetrics = await fetchData('/api/automation_metrics');
+            if (autoMetrics) {
+                document.getElementById('automation-rate').textContent = autoMetrics.automation_rate + '%';
+                document.getElementById('zero-touch-blocks').textContent = autoMetrics.zero_touch_blocks;
+                document.getElementById('analyst-queue').textContent = autoMetrics.analyst_queue_depth;
+
+                if (autoMetrics.last_auto_applied) {
+                    const appliedDate = new Date(autoMetrics.last_auto_applied);
+                    document.getElementById('last-applied').textContent = appliedDate.toLocaleString();
+                }
+            }
+        }
+
+        async function updateMetrics() {
+            const metrics = await fetchData('/api/metrics');
+
+            if (metrics.batch2) {
+                const breakdown = metrics.batch2.action_breakdown;
+                if (breakdown) {
+                    document.getElementById('block-count').textContent = breakdown.BLOCK?.count || 0;
+                    document.getElementById('escalate-count').textContent = breakdown.ESCALATE_TO_ANALYST?.count || 0;
+                    document.getElementById('allow-count').textContent = breakdown.ALLOW?.count || 0;
+                }
+            }
+        }
+
+        async function updateAttackPatterns() {
+            const data = await fetchData('/api/attack_patterns');
+
+            if (data.patterns) {
+                const labels = data.patterns.map(p => p.service);
+                const counts = data.patterns.map(p => p.count);
+
+                const ctx = document.getElementById('attackChart').getContext('2d');
+
+                if (attackChart) {
+                    attackChart.destroy();
+                }
+
+                attackChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Attack Count',
+                            data: counts,
+                            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    color: '#a1a1aa'
+                                },
+                                grid: {
+                                    color: '#2a2a3e'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#a1a1aa'
+                                },
+                                grid: {
+                                    color: '#2a2a3e'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        async function updateRulesTable() {
+            const data = await fetchData('/api/rules');
+
+            if (data.rules) {
+                const topRules = data.rules.slice(0, 20);
+
+                let html = `
+                    <p class="info-text success-text">
+                        ✓ ${data.total} BLOCK rules automatically applied to nftables firewall
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Batch</th>
+                                <th>Source IP</th>
+                                <th>Port</th>
+                                <th>Anomaly Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                topRules.forEach(rule => {
+                    const scoreClass = rule.score > 0.1 ? 'score-high' :
+                                      rule.score > 0 ? 'score-medium' : 'score-low';
+
+                    html += `
+                        <tr>
+                            <td>Batch ${rule.batch}</td>
+                            <td>${rule.ip}</td>
+                            <td>${rule.port}</td>
+                            <td class="${scoreClass}">${rule.score.toFixed(4)}</td>
+                            <td><span class="success-text">🤖 Auto-Applied</span></td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('rules-table').innerHTML = html;
+            }
+        }
+
+        async function updateEscalateQueue() {
+            const data = await fetchData('/api/escalate_queue');
+
+            if (data.queue) {
+                const topQueue = data.queue.slice(0, 10);
+
+                let html = `
+                    <p class="info-text warning-text">
+                        ⚠️ ${data.total} threats awaiting human analyst decision
+                    </p>
+                `;
+
+                if (topQueue.length === 0) {
+                    html += '<p class="info-text">No items in queue</p>';
+                } else {
+                    topQueue.forEach((item, idx) => {
+                        html += `
+                            <div class="queue-item">
+                                <strong>#${idx + 1}</strong>
+                                <strong>${item.source_ip}</strong> → Port ${item.dest_port}
+                                | Score: <strong>${item.anomaly_score.toFixed(4)}</strong>
+                                <span style="float: right; color: #f59e0b;">👤 Pending Review</span>
+                            </div>
+                        `;
+                    });
+
+                    if (data.total > 10) {
+                        html += `<p style="color: #71717a; margin-top: 12px;">+ ${data.total - 10} more in queue</p>`;
+                    }
+                }
+
+                document.getElementById('escalate-queue').innerHTML = html;
+            }
+        }
+
+        async function refreshData() {
+            await Promise.all([
+                updateStatus(),
+                updateMetrics(),
+                updateAttackPatterns(),
+                updateRulesTable(),
+                updateEscalateQueue()
+            ]);
+        }
+
+        // Initial load
+        refreshData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>
