@@ -57,8 +57,8 @@ def _resolve_project_script(filename: str) -> Path:
     return candidates[0]
 
 
-PIPELINE_SCRIPT = _resolve_project_script("adaptrap_firewall_pipeline.py")
-PROFILES_SCRIPT = _resolve_project_script("build_attacker_profiles.py")
+PIPELINE_SCRIPT = _resolve_project_script("dashboard/adaptrap_firewall_pipeline.py")
+PROFILES_SCRIPT = _resolve_project_script("dashboard/build_attacker_profiles.py")
 # Reuse the interpreter running Flask so background jobs work in worktrees
 # that do not contain their own virtualenv. Override when a separate runtime
 # is required.
