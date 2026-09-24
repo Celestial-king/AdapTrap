@@ -28,7 +28,7 @@
                     </svg>
                 </div>
                 <h3>Analyst Review</h3>
-                <p><strong>70th–90th Percentile</strong></p>
+                <p><strong>At or above 70th Percentile</strong></p>
                 <p>Ambiguous threats</p>
                 <p>Queue for human decision</p>
                 <p><strong>Manual approval required</strong></p>
@@ -109,7 +109,7 @@
                 <span class="metric-value highlight" id="automation-rate">—</span>
             </div>
             <div class="metric">
-                <span class="metric-label">Zero-Touch Blocks</span>
+                <span class="metric-label">Manual Blocks Applied</span>
                 <span class="metric-value score-high" id="zero-touch-blocks">—</span>
             </div>
             <div class="metric">
@@ -134,7 +134,7 @@
                 <span class="metric-label">
                     Escalate Actions
                     <span class="badge badge-human">Human</span>
-                    <span class="percentile-label">70th–90th percentile</span>
+                    <span class="percentile-label">≥70th percentile</span>
                 </span>
                 <span class="metric-value score-medium" id="escalate-count">—</span>
             </div>
@@ -150,22 +150,7 @@
     </div>
 </div>
 
-<!-- Automated BLOCK Rules table ─────────────────────────────────────── -->
-<div class="card section-gap">
-    <div class="card-header">
-        <!-- List icon -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-            <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-            <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-        </svg>
-        <span class="card-title">Automated Block Rules — Applied to Firewall</span>
-    </div>
-    <div class="card-body">
-        <div id="rules-table"><div class="loading">Loading rules…</div></div>
-    </div>
-</div>
+
 
 <!-- Attack Patterns chart ────────────────────────────────────────────── -->
 <div class="card">
@@ -219,7 +204,7 @@ async function updateStatus() {
     const auto = await fetchData('/api/automation_metrics');
     if (auto && !auto.error) {
         document.getElementById('automation-rate').textContent  = auto.automation_rate + '%';
-        document.getElementById('zero-touch-blocks').textContent = auto.zero_touch_blocks;
+        document.getElementById('zero-touch-blocks').textContent = auto.manual_blocks;
         document.getElementById('analyst-queue').textContent    = auto.analyst_queue_depth;
         if (auto.last_auto_applied) {
             document.getElementById('last-applied').textContent =
@@ -233,7 +218,6 @@ async function updateMetrics() {
     const target = metrics.latest || metrics.batch2;
     if (target && target.action_breakdown) {
         const bd = target.action_breakdown;
-        document.getElementById('block-count').textContent    = bd.BLOCK?.count   ?? 0;
         document.getElementById('escalate-count').textContent = bd.ESCALATE_TO_ANALYST?.count ?? 0;
         document.getElementById('allow-count').textContent    = bd.ALLOW?.count   ?? 0;
     }
@@ -281,49 +265,19 @@ async function updateAttackPatterns() {
     });
 }
 
-async function updateRulesTable() {
-    const data = await fetchData('/api/rules');
-    if (!data.rules) return;
 
-    const top = data.rules.slice(0, 50);
-    let html = `
-        <p class="info-text" style="margin-bottom:10px;">
-            <span class="success-text">${data.total} BLOCK rules</span>
-            currently active in nftables
-        </p>
-        <table data-sortable>
-            <thead><tr>
-                <th data-sort="">Batch</th>
-                <th data-sort="">Source IP</th>
-                <th class="num" data-sort="">Port</th>
-                <th class="num" data-sort="">Anomaly Score</th>
-                <th>Status</th>
-            </tr></thead>
-            <tbody>
-    `;
-    top.forEach(rule => {
-        const cls = rule.score > 0.1 ? 'score-high'
-                  : rule.score > 0   ? 'score-medium' : 'score-low';
-        html += `
-            <tr>
-                <td><span class="badge badge-neutral">${rule.batch}</span></td>
-                <td class="mono">${rule.ip}</td>
-                <td class="mono num">${rule.port ?? '—'}</td>
-                <td class="mono num ${cls}">${rule.score.toFixed(4)}</td>
-                <td class="success-text" style="font-size:0.82em;">Applied</td>
-            </tr>
-        `;
-    });
-    html += '</tbody></table>';
-    document.getElementById('rules-table').innerHTML = html;
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
 
 async function refreshData() {
     await Promise.all([
         updateStatus(),
         updateMetrics(),
         updateAttackPatterns(),
-        updateRulesTable(),
     ]);
 }
 

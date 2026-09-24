@@ -29,7 +29,7 @@
     </div>
     <div class="card-body">
         <p class="info-text" style="margin-bottom:0;">
-            IPs scoring above the <strong>70th percentile</strong> are placed in this queue
+            IPs scoring at or above the <strong>70th percentile</strong> are placed in this queue
             for <strong>analyst review</strong>. Review each IP and choose to
             <strong style="color:var(--red);">Block</strong> or
             <strong style="color:var(--green);">Allow</strong>.
@@ -76,32 +76,6 @@
         <p class="info-text">
             Analyst decisions persisted to
             <code style="font-family:var(--font-mono); color:var(--yellow-main); font-size:0.88em;">reviewed_decisions.json</code>.
-        </p>
-        <div id="reviewed-list">
-            <p style="color:var(--text-muted); font-size:0.88em;">No decisions yet.</p>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Rules ─────────────────────────────────────────────────────── -->
-<div class="card">
-    <div class="card-header">
-        <!-- CheckSquare icon -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 11 12 14 22 4" />
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-        </svg>
-        <span class="card-title">Rule deletion</span>
-        <div class="card-header-extra">
-            <span id="reviewed-badge" class="badge badge-allow">— reviewed</span>
-        </div>
-    </div>
-    <div class="card-body">
-        <p class="info-text">
-            Review the applied firewall rules and decide whether to
-            <strong style="color:var(--red);">Delete</strong> or keep each rule.
-            Decisions are recorded in
         </p>
         <div id="reviewed-list">
             <p style="color:var(--text-muted); font-size:0.88em;">No decisions yet.</p>
