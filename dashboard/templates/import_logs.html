@@ -170,8 +170,9 @@
             <div>
                 <h3 id="deploy-header-text">Ready to Deploy to Live System</h3>
                 <p id="deploy-description">
-                    Applies deduplication, pushes new BLOCK rules to live nftables,
-                    and routes ambiguous threats to the Analyst Review queue.
+                    Applies deduplication and routes every threat at or above the
+                    allow cutoff to the Analyst Review queue. Firewall changes
+                    require an analyst decision.
                 </p>
             </div>
             <button class="btn btn-primary" id="deploy-btn" onclick="startDeploy()">
@@ -385,7 +386,7 @@ async function startTraining() {
         const resp = await fetch(`/api/import/train/${_currentJobId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contamination: 0.05 }),
+            body: JSON.stringify({ contamination: 0.0175 }),
         });
 
         const data = await resp.json();
@@ -464,7 +465,7 @@ function renderDeployOutcome(summary) {
     card.style.display = 'block';
 
     const items = [
-        { val: summary.applied,        lbl: `BLOCK Rules Applied (${batchName})` },
+        { val: summary.total_candidates - summary.skipped_nan, lbl: `Rules Queued (${batchName})` },
         { val: summary.escalate_added, lbl: 'Sent to Analyst Queue' },
         { val: summary.deduplicated,   lbl: 'Deduplicated (Already Active)' },
         { val: summary.skipped_nan,    lbl: 'Skipped (No Dest Port)' },
@@ -551,7 +552,6 @@ function renderPipelineReport(report) {
     `;
 
     const rows = [
-        { badge: '<span class="badge badge-block">Block (Auto)</span>',   cls: 'score-high',   data: bd.BLOCK },
         { badge: '<span class="badge badge-human">Escalate (Queue)</span>', cls: 'score-medium', data: bd.ESCALATE_TO_ANALYST },
         { badge: '<span class="badge badge-allow">Allow (Auto)</span>',   cls: 'score-low',    data: bd.ALLOW },
     ];

@@ -365,18 +365,10 @@
         <div class="card">
             <h2>🔄 Automation Workflow</h2>
             <div class="workflow-visual">
-                <div class="workflow-step workflow-auto">
-                    <div class="icon">🤖</div>
-                    <h3>AUTO-BLOCK</h3>
-                    <p><strong>≥90th Percentile</strong></p>
-                    <p>High-confidence threats</p>
-                    <p>Instantly applied to firewall</p>
-                    <p><strong>ZERO human intervention</strong></p>
-                </div>
                 <div class="workflow-step workflow-human">
                     <div class="icon">👤</div>
                     <h3>ANALYST REVIEW</h3>
-                    <p><strong>70th-90th Percentile</strong></p>
+                    <p><strong>At or above 70th Percentile</strong></p>
                     <p>Ambiguous threats</p>
                     <p>Queue for human decision</p>
                     <p><strong>Manual approval required</strong></p>
@@ -424,7 +416,7 @@
                 </div>
                 <div class="metric">
                     <span class="metric-label">
-                        <span class="auto-indicator">🤖</span>Zero-Touch Blocks
+                        <span class="auto-indicator">👤</span>Manual Blocks Applied
                     </span>
                     <span class="metric-value score-high" id="zero-touch-blocks">-</span>
                 </div>
@@ -440,17 +432,9 @@
                 <h2>⚡ Threat Decision Breakdown</h2>
                 <div class="metric">
                     <span class="metric-label">
-                        BLOCK Actions
-                        <span class="automation-badge badge-automated">🤖 AUTOMATED</span>
-                        <span class="percentile-label">≥90th percentile</span>
-                    </span>
-                    <span class="metric-value score-high" id="block-count">-</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">
                         ESCALATE Actions
                         <span class="automation-badge badge-human">👤 HUMAN REVIEW</span>
-                        <span class="percentile-label">70th-90th percentile</span>
+                        <span class="percentile-label">At or above 70th percentile</span>
                     </span>
                     <span class="metric-value score-medium" id="escalate-count">-</span>
                 </div>
@@ -458,7 +442,7 @@
                     <span class="metric-label">
                         ALLOW Actions
                         <span class="automation-badge badge-automated">🤖 AUTOMATED</span>
-                        <span class="percentile-label">&lt;70th percentile</span>
+                        <span class="percentile-label">Below 70th percentile</span>
                     </span>
                     <span class="metric-value score-low" id="allow-count">-</span>
                 </div>
@@ -466,7 +450,7 @@
         </div>
 
         <div class="card">
-            <h2>🤖 Automated BLOCK Rules (Applied to Firewall)</h2>
+            <h2>Active BLOCK Rules (Applied by Analysts)</h2>
             <div id="rules-table">
                 <div class="loading">Loading rules...</div>
             </div>
@@ -475,8 +459,8 @@
         <div class="card">
             <h2>👤 Analyst Review Queue (ESCALATE_TO_ANALYST)</h2>
             <p class="info-text">
-                These threats scored between 70th-90th percentile. They await human analyst review before any action is taken.
-                <strong>NOT automatically blocked.</strong>
+                These threats scored at or above the 70th percentile. They await human analyst review before any action is taken.
+                <strong>No firewall rule is applied until an analyst chooses Block.</strong>
             </p>
             <div id="escalate-queue">
                 <div class="loading">Loading queue...</div>
@@ -513,7 +497,7 @@
             const autoMetrics = await fetchData('/api/automation_metrics');
             if (autoMetrics) {
                 document.getElementById('automation-rate').textContent = autoMetrics.automation_rate + '%';
-                document.getElementById('zero-touch-blocks').textContent = autoMetrics.zero_touch_blocks;
+                document.getElementById('zero-touch-blocks').textContent = autoMetrics.manual_blocks;
                 document.getElementById('analyst-queue').textContent = autoMetrics.analyst_queue_depth;
 
                 if (autoMetrics.last_auto_applied) {
@@ -529,7 +513,6 @@
             if (metrics.batch2) {
                 const breakdown = metrics.batch2.action_breakdown;
                 if (breakdown) {
-                    document.getElementById('block-count').textContent = breakdown.BLOCK?.count || 0;
                     document.getElementById('escalate-count').textContent = breakdown.ESCALATE_TO_ANALYST?.count || 0;
                     document.getElementById('allow-count').textContent = breakdown.ALLOW?.count || 0;
                 }
@@ -602,7 +585,7 @@
 
                 let html = `
                     <p class="info-text success-text">
-                        ✓ ${data.total} BLOCK rules automatically applied to nftables firewall
+                        ✓ ${data.total} active BLOCK rules in the nftables firewall
                     </p>
                     <table>
                         <thead>

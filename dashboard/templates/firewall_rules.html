@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Firewall Rules{% endblock %}
+{% block page_title %}Firewall Rules{% endblock %}
+
+{% block content %}
+
+<!-- Active BLOCK Rules table ─────────────────────────────────────────── -->
+<div class="card section-gap">
+    <div class="card-header">
+        <!-- List icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+        <span class="card-title">Active Block Rules — Applied to Firewall</span>
+    </div>
+    <div class="card-body">
+        <p class="info-text">
+            These are live rules in <code style="font-family:var(--font-mono);">inet filter input</code>.
+            Deletion is immediate and cannot be undone.
+        </p>
+        <div id="rules-table">
+            <div class="loading">Loading rules…</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    async function fetchData(endpoint) {
+        const r = await fetch(endpoint);
+        return r.json();
+    }
+
+    async function updateRulesTable() {
+        const data = await fetchData('/api/firewall-rules');
+        if (!data.ok) {
+            document.getElementById('rules-table').innerHTML =
+                `<p class="error-text">Unable to load live firewall rules: ${escapeHtml(data.error || 'Unknown error')}</p>
+             <p class="info-text">The dashboard must be allowed to run <code>sudo /usr/sbin/nft</code> without an interactive password.</p>`;
+            return;
+        }
+
+        const top = data.rules.slice(0, 50);
+        let html = `
+        <p class="info-text" style="margin-bottom:10px;">
+            <span class="success-text">${data.total} active BLOCK rules</span>
+            currently active in nftables
+        </p>
+        <table data-sortable>
+            <thead><tr>
+                <th data-sort="">Source IP</th>
+                <th class="num" data-sort="">Port</th>
+                <th class="num" data-sort="">Handle</th>
+                <th data-sort="">Batch / Checkpoint</th>
+                <th style="text-align:center;">Action</th>
+            </tr></thead>
+            <tbody>
+    `;
+        top.forEach(rule => {
+            html += `
+            <tr>
+                <td class="mono">${escapeHtml(rule.source_ip)}</td>
+                <td class="mono num">${rule.port}</td>
+                <td class="mono num">${rule.handle}</td>
+                <td><span class="badge badge-neutral">${escapeHtml(rule.checkpoint)}</span></td>
+                <td style="text-align:center;">
+                    <button class="btn btn-danger"
+                            onclick="deleteAppliedRule(${rule.handle}, '${escapeHtml(rule.source_ip)}', ${rule.port})">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        `;
+        });
+        html += '</tbody></table>';
+        document.getElementById('rules-table').innerHTML = html;
+    }
+
+    async function deleteAppliedRule(handle, sourceIp, port) {
+        if (!confirm(`Delete the live firewall rule for ${sourceIp}:${port} (handle ${handle})? This is immediate.`)) {
+            return;
+        }
+        try {
+            const response = await fetch('/api/delete-rule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ handle }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || `HTTP ${response.status}`);
+            }
+            showToast(`Deleted firewall rule handle ${handle}`, 'ok');
+            await updateRulesTable();
+        } catch (error) {
+            showToast(`Rule deletion failed: ${error.message}`, 'err');
+        }
+    }
+
+    updateRulesTable();
+</script>
+{% endblock %}
