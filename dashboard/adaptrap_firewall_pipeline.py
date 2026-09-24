@@ -125,7 +125,7 @@ def main():
     escalate_details = [
         {
             "source_ip": row["source_ip"],
-            "dest_port": None,
+            "dest_port": row["port"],
             "anomaly_score": float(row["anomaly_score"]),
             "action": "ESCALATE_TO_ANALYST",
         }
