@@ -74,7 +74,7 @@
             html += `
             <tr>
                 <td class="mono">${escapeHtml(rule.source_ip)}</td>
-                <td class="mono num">${rule.port}</td>
+                <td class="mono num">${rule.port ?? '__'}</td>
                 <td class="mono num">${rule.handle}</td>
                 <td><span class="badge badge-neutral">${escapeHtml(rule.checkpoint)}</span></td>
                 <td style="text-align:center;">
