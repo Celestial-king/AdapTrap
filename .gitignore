@@ -1,5 +1,9 @@
 # ── Python ─────────────────────────────────────────────────────────
 venv/
+<<<<<<< HEAD
+=======
+venv311/
+>>>>>>> 
 env/
 __pycache__/
 *.py[cod]
@@ -41,3 +45,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+<<<<<<< HEAD
+=======
+datasets/CICHoneynet_July10-16.csv
+>>>>>>> 7d6c1f039fb19e740e66c1b56c7d3a1dabe60486

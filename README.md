@@ -26,9 +26,14 @@ The Flask dashboard (Tab 1: Overview, Tab 2: Analyst Review, Tab 3: Import Logs)
 
 ---
 
+## Model Checkpoint
+
+The trained Isolation Forest model checkpoint is available on [Hugging Face](https://huggingface.co/RnzB6/AdapTrap-m3) for reproducibility and model preservation.
+
 ## Setup
 
 ### 1. Create and activate the virtual environment
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -36,15 +41,19 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure passwordless sudo for nftables
+
 Add this line via `sudo visudo` (replace `sentry` with your username):
+
 ```
 sentry ALL=(root) NOPASSWD: /usr/sbin/nft
 ```
 
 ### 3. Start the dashboard
+
 ```bash
 ./start_dashboard.sh
 ```
+
 Open **http://127.0.0.1:5000** in your browser.
 
 ---
@@ -65,6 +74,7 @@ Pre-built split CSVs for Batch 1 and Batch 2 (`batch1_train.csv`, `batch1_holdou
 ## Usage
 
 ### Build attacker profiles from a raw capture
+
 ```bash
 python3 build_attacker_profiles.py \
     --raw-csv CICHoneynet_July1.csv \
@@ -73,6 +83,7 @@ python3 build_attacker_profiles.py \
 ```
 
 ### Run the ML pipeline (dry-run, inspect results)
+
 ```bash
 python3 adaptrap_firewall_pipeline.py \
     --train-csv batch1_train.csv \
@@ -82,6 +93,7 @@ python3 adaptrap_firewall_pipeline.py \
 ```
 
 ### Apply rules to nftables (requires sudo)
+
 ```bash
 python3 adaptrap_firewall_pipeline.py \
     --train-csv batch1_train.csv \
@@ -94,24 +106,24 @@ python3 adaptrap_firewall_pipeline.py \
 
 ## Dashboard Tabs
 
-| Tab | Purpose |
-|-----|---------|
-| **Overview** | Live firewall rule count per batch, automation metrics, attack pattern chart |
-| **Analyst Review** | Interactive queue of 70–90th percentile threats — Block or Allow with one click |
-| **Import Logs** | Upload a raw Wireshark CSV, stream profile generation, inspect model report, deploy to firewall |
+| Tab                | Purpose                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| **Overview**       | Live firewall rule count per batch, automation metrics, attack pattern chart                    |
+| **Analyst Review** | Interactive queue of 70–90th percentile threats — Block or Allow with one click                 |
+| **Import Logs**    | Upload a raw Wireshark CSV, stream profile generation, inspect model report, deploy to firewall |
 
 ---
 
 ## Key Files
 
-| File | Description |
-|------|-------------|
-| `build_attacker_profiles.py` | Cleans raw Wireshark CSV → 24-feature attacker profiles, 70/15/15 split |
-| `adaptrap_firewall_pipeline.py` | Isolation Forest training, scoring, nftables rule generation |
-| `dashboard/app.py` | Flask backend — APIs, job runner, batch management |
-| `dashboard/templates/` | Jinja2 templates for the 3-tab UI |
-| `batch1_checkpoint.json` | Batch 1 model checkpoint (metrics + applied rules) |
-| `batch2_applied_checkpoint.json` | Batch 2 model checkpoint |
+| File                             | Description                                                             |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `build_attacker_profiles.py`     | Cleans raw Wireshark CSV → 24-feature attacker profiles, 70/15/15 split |
+| `adaptrap_firewall_pipeline.py`  | Isolation Forest training, scoring, nftables rule generation            |
+| `dashboard/app.py`               | Flask backend — APIs, job runner, batch management                      |
+| `dashboard/templates/`           | Jinja2 templates for the 3-tab UI                                       |
+| `batch1_checkpoint.json`         | Batch 1 model checkpoint (metrics + applied rules)                      |
+| `batch2_applied_checkpoint.json` | Batch 2 model checkpoint                                                |
 
 ---
 
