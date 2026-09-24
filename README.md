@@ -2,7 +2,7 @@
 
 **Adaptive Firewall via Continual Anomaly Learning from Honeypot Telemetry**
 
-A BS Computer Science thesis project (Team Monolith, Asia Pacific College). AdapTrap is a honeypot-driven continual learning system that automatically classifies attacker profiles using Isolation Forest anomaly detection and enforces decisions through nftables firewall rules — with a real-time web dashboard for analyst oversight.
+A BS Computer Science thesis project (Team Monolith, Asia Pacific College). AdapTrap is a honeypot-driven continual learning system that classifies attacker profiles using Isolation Forest anomaly detection and presents the results in a real-time web dashboard for analyst review. Firewall BLOCK rules are applied only after an analyst approves them.
 
 ---
 
@@ -12,17 +12,15 @@ A BS Computer Science thesis project (Team Monolith, Asia Pacific College). Adap
 Raw Honeypot Capture (Wireshark CSV)
         │
         ▼
-build_attacker_profiles.py   ← Feature engineering (24 attributes per attacker IP)
+dashboard/build_attacker_profiles.py   ← Feature engineering (24 attributes per attacker IP)
         │
         ▼
-adaptrap_firewall_pipeline.py  ← Isolation Forest training + scoring
+dashboard/adaptrap_firewall_pipeline.py  ← Isolation Forest training + scoring
         │
-        ├── ≥90th percentile → 🤖 AUTO-BLOCK   (nftables drop rule, zero-touch)
-        ├── 70–90th          → 👤 ANALYST QUEUE (human Block / Allow decision)
-        └── <70th            → 🤖 AUTO-ALLOW   (no further action)
+        └── suspicious candidates → 👤 ANALYST QUEUE (human Block / Allow decision)
 ```
 
-The Flask dashboard (Tab 1: Overview, Tab 2: Analyst Review, Tab 3: Import Logs) ties every stage together with live streaming output, 1-click deployment, and automatically numbered batch tracking (Batch 1, Batch 2, Batch 3 …).
+The Flask dashboard (Overview, Analyst Review, Import Logs, and Firewall Rules) ties every stage together with live streaming output, analyst-controlled deployment, and automatically numbered batch tracking (Batch 1, Batch 2, Batch 3 …). No firewall rules are applied automatically.
 
 ---
 
@@ -32,15 +30,28 @@ The trained Isolation Forest model checkpoint is available on [Hugging Face](htt
 
 ## Setup
 
-### 1. Create and activate the virtual environment
+### 1. Create and activate the Python 3.11 virtual environment
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
+The project uses Python 3.11 for its pinned dependencies. Fish users should use
+the `activate.fish` script:
+
+```fish
+python3.11 -m venv venv
+source venv/bin/activate.fish
 pip install -r requirements.txt
 ```
 
-### 2. Configure passwordless sudo for nftables
+If the environment has already been created, only activation is required:
+
+```fish
+source venv/bin/activate.fish
+```
+
+### 2. Configure optional nftables access
+
+This is required only when an analyst approves a BLOCK rule or when querying
+the live firewall rules. It is not required to run the dashboard or inspect
+model results.
 
 Add this line via `sudo visudo` (replace `sentry` with your username):
 
@@ -50,8 +61,8 @@ sentry ALL=(root) NOPASSWD: /usr/sbin/nft
 
 ### 3. Start the dashboard
 
-```bash
-./start_dashboard.sh
+```fish
+python dashboard/app.py
 ```
 
 Open **http://127.0.0.1:5000** in your browser.
@@ -67,40 +78,14 @@ Raw honeypot captures (CIC-Honeynet dataset) are **not included** in this reposi
 
 Download the CIC-Honeynet dataset from the [Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/).
 
-Pre-built split CSVs for Batch 1 and Batch 2 (`batch1_train.csv`, `batch1_holdout.csv`, `batch2_train.csv`, `batch2_holdout.csv`) are included so the pipeline can be run immediately without the raw captures.
+The raw captures and split CSV files are not included in this checkout. Provide
+the appropriate input CSVs when running the profile builder or pipeline.
 
 ---
 
-## Usage
 
-### Build attacker profiles from a raw capture
-
-```bash
-python3 build_attacker_profiles.py \
-    --raw-csv CICHoneynet_July1.csv \
-    --out-dir . \
-    --prefix batch1
-```
-
-### Run the ML pipeline (dry-run, inspect results)
-
-```bash
-python3 adaptrap_firewall_pipeline.py \
-    --train-csv batch1_train.csv \
-    --holdout-csv batch1_holdout.csv \
-    --contamination 0.02 \
-    --out-report batch1_checkpoint.json
-```
-
-### Apply rules to nftables (requires sudo)
-
-```bash
-python3 adaptrap_firewall_pipeline.py \
-    --train-csv batch1_train.csv \
-    --holdout-csv batch1_holdout.csv \
-    --contamination 0.02 \
-    --apply
-```
+The dashboard's deployment flow queues all candidates for analyst review.
+Only an explicit analyst BLOCK decision can apply a rule to nftables.
 
 ---
 
@@ -108,9 +93,10 @@ python3 adaptrap_firewall_pipeline.py \
 
 | Tab                | Purpose                                                                                         |
 | ------------------ | ----------------------------------------------------------------------------------------------- |
-| **Overview**       | Live firewall rule count per batch, automation metrics, attack pattern chart                    |
+| **Overview**       | Live firewall rule count per batch, model metrics, and attack pattern chart                       |
 | **Analyst Review** | Interactive queue of 70–90th percentile threats — Block or Allow with one click                 |
-| **Import Logs**    | Upload a raw Wireshark CSV, stream profile generation, inspect model report, deploy to firewall |
+| **Import Logs**    | Upload a raw Wireshark CSV, stream profile generation, inspect the model report, and queue candidates |
+| **Firewall Rules**  | View active nftables rules and remove rules by handle                                               |
 
 ---
 
@@ -118,12 +104,13 @@ python3 adaptrap_firewall_pipeline.py \
 
 | File                             | Description                                                             |
 | -------------------------------- | ----------------------------------------------------------------------- |
-| `build_attacker_profiles.py`     | Cleans raw Wireshark CSV → 24-feature attacker profiles, 70/15/15 split |
-| `adaptrap_firewall_pipeline.py`  | Isolation Forest training, scoring, nftables rule generation            |
+| `dashboard/build_attacker_profiles.py`     | Cleans raw Wireshark CSV → 24-feature attacker profiles, 70/15/15 split |
+| `dashboard/adaptrap_firewall_pipeline.py`  | Isolation Forest training, scoring, and dry-run rule generation          |
 | `dashboard/app.py`               | Flask backend — APIs, job runner, batch management                      |
-| `dashboard/templates/`           | Jinja2 templates for the 3-tab UI                                       |
-| `batch1_checkpoint.json`         | Batch 1 model checkpoint (metrics + applied rules)                      |
-| `batch2_applied_checkpoint.json` | Batch 2 model checkpoint                                                |
+| `dashboard/templates/`           | Jinja2 templates for the dashboard UI                                   |
+| `batch3_applied_checkpoint.json` | Batch 3 model checkpoint and analyst-deployment metadata                |
+| `escalate_queue.json`            | Candidates waiting for analyst review                                  |
+| `reviewed_decisions.json`        | Analyst Block / Allow decisions                                         |
 
 ---
 
