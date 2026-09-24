@@ -474,6 +474,22 @@ def api_rules():
     rules.sort(key=lambda r: r["score"], reverse=True)
     return jsonify({"rules": rules, "total": len(rules)})
 
+def _rule_port_lookup() -> dict[str, int | None]:
+    ports = {}
+
+    for batch in get_all_applied_checkpoints():
+        for rule in batch["data"].get("rule_details", []):
+            source_ip = rule.get("source_ip")
+            if source_ip:
+                ports[str(source_ip)] = rule.get("dest_port")
+
+    for decision in load_reviewed():
+        if decision.get("decision") == "BLOCK" and decision.get("nft_applied"):
+            source_ip = decision.get("source_ip")
+            if source_ip:
+                ports[str(source_ip)] = decision.get("dest_port")
+
+    return ports
 
 def _rule_checkpoint_labels() -> dict[str, str]:
     """Maps source_ip -> which batch/decision first flagged it, for display."""
@@ -501,6 +517,8 @@ def _list_active_nft_rules() -> list[dict]:
         timeout=5,
     )
     labels = _rule_checkpoint_labels()
+    ports = _rule_port_lookup()
+
     rules = []
     for line in result.stdout.splitlines():
         if " drop" not in f" {line}":
@@ -512,6 +530,7 @@ def _list_active_nft_rules() -> list[dict]:
         source_ip = source_match.group(1)
         rules.append({
             "source_ip": source_ip,
+            "port": ports.get(source_ip),
             "handle": int(handle_match.group(1)),
             "checkpoint": labels.get(source_ip, "Unknown"),
         })
