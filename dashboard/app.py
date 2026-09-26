@@ -38,9 +38,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).parent.parent
-ESCALATE_FILE = PROJECT_ROOT / "escalate_queue.json"
-REVIEWED_FILE = PROJECT_ROOT / "reviewed_decisions.json"
-IMPORTED_BATCHES_FILE = PROJECT_ROOT / "imported_batches.json"
+DATA_DIR = PROJECT_ROOT / "data"
+
+ESCALATE_FILE = DATA_DIR / "escalate_queue.json"
+REVIEWED_FILE = DATA_DIR / "reviewed_decisions.json"
+IMPORTED_BATCHES_FILE = DATA_DIR / "imported_batches.json"
 
 
 def _resolve_project_script(filename: str) -> Path:
@@ -219,7 +221,7 @@ def get_next_batch_info() -> tuple[int, str, str]:
 
 
 def load_checkpoint(filename: str) -> dict | None:
-    filepath = PROJECT_ROOT / filename
+    filepath = DATA_DIR / "applied_checkpoints" / filename
     if filepath.exists():
         try:
             with open(filepath) as fh:
@@ -1018,7 +1020,7 @@ def api_import_deploy(job_id: str):
     }
 
     checkpoint_filename = f"{batch_id}_applied_checkpoint.json"
-    checkpoint_path = PROJECT_ROOT / checkpoint_filename
+    checkpoint_path = DATA_DIR / "applied_checkpoints" / checkpoint_filename
     with open(checkpoint_path, "w") as fh:
         json.dump(applied_checkpoint, fh, indent=2)
 

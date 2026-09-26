@@ -32,7 +32,7 @@ from huggingface_hub import hf_hub_download
 from sklearn.metrics import silhouette_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "models"))
-from models.adaptrap_pipeline import generate_rules, load_and_clean, parse_packets, compute_conn_rate, build_ip_profiles
+from adaptrap_pipeline import generate_rules, load_and_clean, parse_packets, compute_conn_rate, build_ip_profiles
 
 logging.basicConfig(
     level=logging.INFO,

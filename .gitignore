@@ -24,6 +24,9 @@ adaptrap_import_*/
 reviewed_decisions.json
 escalate_queue.json
 imported_batches.json
+data/*
+!data/.gitkeep
+
 
 # ── Stale/duplicate batch artifacts ────────────────────────────────
 batch2__train.csv
