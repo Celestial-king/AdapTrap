@@ -92,7 +92,7 @@
 
         <div id="progress-actions" style="display:none; margin-top:12px;">
             <button class="btn btn-primary" id="train-btn" onclick="startTraining()" style="display:none;">
-                Run Model Training &amp; Scoring
+                Run Model Scoring
             </button>
             <span id="train-note" style="color:var(--text-muted); font-size:0.85em; margin-left:10px;"></span>
         </div>
@@ -392,19 +392,19 @@ async function startTraining() {
         const data = await resp.json();
 
         if (!resp.ok || !data.ok) {
-            showToast('Training start failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
+            showToast('Scoring start failed: ' + (data.error ?? `HTTP ${resp.status}`), 'err');
             trainBtn.disabled    = false;
-            trainBtn.textContent = 'Retry Training';
+            trainBtn.textContent = 'Retry Scoring';
             return;
         }
 
-        showToast('Training started — streaming output…', 'info');
+        showToast('Scoring started — streaming output…', 'info');
         startPolling();
 
     } catch (err) {
         showToast('Network error: ' + err.message, 'err');
         trainBtn.disabled    = false;
-        trainBtn.textContent = 'Retry Training';
+        trainBtn.textContent = 'Retry Scoring';
     }
 }
 

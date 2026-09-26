@@ -32,8 +32,7 @@ from huggingface_hub import hf_hub_download
 from sklearn.metrics import silhouette_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "models"))
-from adaptrap_pipeline import process_batch, generate_rules
-
+from models.adaptrap_pipeline import generate_rules, load_and_clean, parse_packets, compute_conn_rate, build_ip_profiles
 
 logging.basicConfig(
     level=logging.INFO,
@@ -103,7 +102,10 @@ def main():
     log.info("Scoring %s against published M3 checkpoint (%s)", args.raw_csv, REPO_NAME)
 
     # Build attacker profiles the same way M3's training data was built
-    profiles = process_batch(args.raw_csv)
+    raw = load_and_clean(args.raw_csv)          # cleaned packet-level frame
+    raw = parse_packets(raw)
+    raw = compute_conn_rate(raw)
+    profiles = build_ip_profiles(raw)           # same aggregated result as before
 
     # Guard against a batch missing a protocol column M3 was trained on
     for col in FEATURE_COLUMNS:
@@ -122,15 +124,29 @@ def main():
     n_allow = int(np.sum(actions == "ALLOW"))
     total = len(actions)
 
-    escalate_details = [
-        {
-            "source_ip": row["source_ip"],
-            "dest_port": row["port"],
+    profile_lookup = profiles.set_index("source_ip")
+
+    escalate_details = []
+    for _, row in rules_df[rules_df["action"] == "ESCALATE_TO_ANALYST"].iterrows():
+        ip = row["source_ip"]
+
+        profile_row = {}
+        if ip in profile_lookup.index:
+            p = profile_lookup.loc[ip].to_dict()
+            profile_row = {k: (float(v) if isinstance(v, (int, float)) else v)
+                            for k, v in p.items() if k != "dominant_protocol"}
+
+        ip_packets = raw[raw["source_ip"] == ip][["time_sec", "source_ip", "protocol", "length", "info"]]
+        packet_rows = ip_packets.head(50).to_dict(orient="records")  # cap at 50 rows per IP — see note below
+
+        escalate_details.append({
+            "source_ip": ip,
+            "dest_port": None,
             "anomaly_score": float(row["anomaly_score"]),
             "action": "ESCALATE_TO_ANALYST",
-        }
-        for _, row in rules_df[rules_df["action"] == "ESCALATE_TO_ANALYST"].iterrows()
-    ]
+            "profile": profile_row,
+            "packets": packet_rows,
+        })
 
     metrics = {
         "flagging_rate_pct": round(flagging_rate(actions), 2),

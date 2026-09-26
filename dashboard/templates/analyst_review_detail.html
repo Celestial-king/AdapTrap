@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Record Detail{% endblock %}
+{% block page_title %}Review Record{% endblock %}
+
+{% block content %}
+<div class="card section-gap">
+    <div class="card-header">
+        <span class="card-title">Attacker Profile</span>
+        <div class="card-header-extra">
+            <a href="/analyst-review" class="btn btn-ghost" style="padding:4px 10px; font-size:0.8em;">← Back to
+                Queue</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="detail-loading" class="loading">Loading record…</div>
+        <div class="card-body">
+            <div id="detail-body" style="display:none;">
+                <table data-sortable>
+                    <tbody id="detail-fields"></tbody>
+                </table>
+                <div style="display:flex; gap:8px; margin-top:16px;">   
+                    <button class="btn btn-danger" id="btn-block" onclick="submitDecision('block')">Block</button>
+                    <button class="btn btn-success" id="btn-allow" onclick="submitDecision('allow')">Allow</button>
+                </div>
+                <h4 style="margin-top:20px; margin-bottom: 10px;">Raw Packet Log (up to 50 rows)</h4>
+                <div id="detail-packets"></div>
+        
+            </div>
+            <div id="detail-error" style="display:none; color:var(--red);"></div>
+        </div>
+        <div id="detail-error" style="display:none; color:var(--red);"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const SOURCE_IP = {{ source_ip | tojson | safe }};    
+    let _item = null;
+
+    function escHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    async function loadDetail() {
+        try {
+            const res = await fetch(`/api/escalate_queue/${encodeURIComponent(SOURCE_IP)}`);
+            const data = await res.json();
+            if (!data.ok) {
+                document.getElementById('detail-loading').style.display = 'none';
+                document.getElementById('detail-error').style.display = 'block';
+                document.getElementById('detail-error').textContent = data.error || 'Record not found';
+                return;
+            }
+            _item = data.item;
+            renderDetail();
+        } catch (err) {
+            document.getElementById('detail-loading').style.display = 'none';
+            document.getElementById('detail-error').style.display = 'block';
+            document.getElementById('detail-error').textContent = 'Network error: ' + err.message;
+        }
+    }
+
+    function renderDetail() {
+            document.getElementById('detail-loading').style.display = 'none';
+            document.getElementById('detail-body').style.display = 'block';
+
+            const rows = [
+                ['Source IP', _item.source_ip],
+                ['Batch', _item.batch || '—'],
+                ['Anomaly Score', typeof _item.anomaly_score === 'number' ? _item.anomaly_score.toFixed(4) : '—'],
+                ['Representative Port', _item.dest_port ?? 'N/A (informational only — not used for enforcement scope)'],
+            ];
+
+            document.getElementById('detail-fields').innerHTML = rows.map(([k, v]) =>
+                `<tr><td style="color:var(--text-muted); width:220px;">${escHtml(k)}</td><td class="mono">${escHtml(v)}</td></tr>`
+            ).join('');
+
+            // Raw packet log
+            const packets = _item.packets || [];
+            const packetsSection = document.getElementById('detail-packets');
+            if (packets.length === 0) {
+                packetsSection.innerHTML = '<p style="color:var(--text-muted); font-size:0.88em;">No packet-level data available for this record.</p>';
+                return;
+            }
+            let html = `
+                    <table data-sortable>
+                        <thead><tr>
+                            <th>Time</th><th>Source</th><th>Protocol</th><th class="num">Length</th><th>Info</th>
+                        </tr></thead>
+                        <tbody>
+                `;
+                        packets.forEach(p => {
+                            html += `
+                        <tr>
+                            <td class="mono">${escHtml(p.time_sec ?? '—')}</td>
+                            <td class="mono">${escHtml(p.source_ip ?? '—')}</td>
+                            <td>${escHtml(p.protocol ?? '—')}</td>
+                            <td class="mono num">${escHtml(p.length ?? '—')}</td>
+                            <td class="mono" style="font-size:0.82em;">${escHtml(p.info ?? '—')}</td>
+                        </tr>
+                    `;
+            });
+            html += '</tbody></table>';
+            packetsSection.innerHTML = html;
+        }
+
+    async function submitDecision(decision) {
+        if (!_item) return;
+        document.getElementById('btn-block').disabled = true;
+        document.getElementById('btn-allow').disabled = true;
+
+        try {
+            const resp = await fetch('/api/review-decision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source_ip: _item.source_ip,
+                    dest_port: _item.dest_port,
+                    decision: decision,
+                    batch: _item.batch || 'Analyst Review',
+                }),
+            });
+            const result = await resp.json();
+            if (!resp.ok || !result.ok) {
+                showToast('Failed: ' + (result.error ?? `HTTP ${resp.status}`), 'err');
+                document.getElementById('btn-block').disabled = false;
+                document.getElementById('btn-allow').disabled = false;
+                return;
+            }
+            showToast(`${_item.source_ip} — ${decision === 'block' ? 'BLOCKED' : 'ALLOWED'}`, 'ok');
+            window.location.href = '/analyst-review';
+        } catch (err) {
+            showToast('Network error: ' + err.message, 'err');
+            document.getElementById('btn-block').disabled = false;
+            document.getElementById('btn-allow').disabled = false;
+        }
+    }
+
+    loadDetail();
+</script>
+{% endblock %}

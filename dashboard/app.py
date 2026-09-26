@@ -354,6 +354,9 @@ def overview():
 def analyst_review():
     return render_template("analyst_review.html", active_tab="analyst_review")
 
+@app.route("/analyst-review/<source_ip>")
+def analyst_review_detail(source_ip):
+    return render_template("analyst_review_detail.html", source_ip=source_ip, active_tab="analyst_review")
 
 @app.route("/import-logs")
 def import_logs():
@@ -368,6 +371,14 @@ def firewall_rules():
 # ---------------------------------------------------------------------------
 # API routes
 # ---------------------------------------------------------------------------
+
+@app.route("/api/escalate_queue/<source_ip>")
+def api_escalate_item(source_ip):
+    data = load_escalate_queue()
+    item = next((i for i in data.get("queue", []) if i.get("source_ip") == source_ip), None)
+    if not item:
+        return jsonify({"ok": False, "error": "Record not found"}), 404
+    return jsonify({"ok": True, "item": item})
 
 @app.route("/api/status")
 def api_status():
@@ -976,6 +987,8 @@ def api_import_deploy(job_id: str):
                 "anomaly_score": float(esc.get("anomaly_score", 0.0)),
                 "action": "ESCALATE_TO_ANALYST",
                 "batch": batch_name,
+                "profile": esc.get("profile", {}),
+                "packets": esc.get("packets", []),
             }
             current_queue.insert(0, esc_entry)  # Newest batch at top of queue
             existing_queue_ips.add(ip)

@@ -134,7 +134,7 @@ function renderPending() {
         html += `
             <tr id="row-${idx}" data-ip="${escHtml(item.source_ip)}" data-port="${port}">
                 <td><span class="badge badge-neutral">${escHtml(batchTag)}</span></td>
-                <td class="mono">${escHtml(item.source_ip)}</td>
+                <td class="mono"><a href="/analyst-review/${encodeURIComponent(item.source_ip)}">${escHtml(item.source_ip)}</a></td>
                 <td class="mono num">${port}</td>
                 <td class="mono num score-medium">${scoreVal}</td>
                 <td><span class="badge badge-human">Escalate</span></td>
