@@ -576,6 +576,23 @@ def api_delete_rule():
     if isinstance(handle, bool) or not isinstance(handle, int) or handle <= 0:
         return jsonify({"ok": False, "error": "handle must be a positive integer"}), 400
 
+    source_ip = None
+    batch = None
+
+    # Get the currently deleted rule's metadata (source ip and the batch it came from)
+    try:
+        active_rules = _list_active_nft_rules()
+
+        for rule in active_rules:
+            if rule.get("handle") == handle:
+                source_ip = rule.get("source_ip")
+                batch = rule.get("batch") or rule.get("checkpoint")
+
+                break
+    except Exception as exc:
+        log.warning("Unable to get metadata for nftables rule handle %d: %s", handle, exc)
+
+
     cmd = [
         "sudo", "-n", "nft", "delete", "rule", *NFT_TABLE.split(),
         NFT_CHAIN, "handle", str(handle),
@@ -595,9 +612,24 @@ def api_delete_rule():
         log.error("Unable to delete nftables rule handle %d: %s", handle, exc)
         return jsonify({"ok": False, "error": "Unable to execute nftables deletion"}), 502
 
-    log.info("Deleted nftables rule handle %d", handle)
-    return jsonify({"ok": True, "handle": handle, "stdout": result.stdout})
+        
 
+    timestamp = datetime.now(timezone.utc).isoformat()
+    reviewed = load_reviewed()
+
+
+    reviewed.append({
+        "source_ip": source_ip,
+        "batch": batch,
+        "decision": "DELETE",
+        "handle": handle,
+        "timestamp": timestamp,
+    })
+    save_reviewed(reviewed)
+
+    log.info("Deleted nftables rule handle %d", handle, source_ip, batch,)
+
+    return jsonify({"ok": True, "handle": handle, "timestamp": timestamp, "stdout": result.stdout})
 
 @app.route("/api/attack_patterns")
 def api_attack_patterns():
@@ -700,6 +732,19 @@ def api_reviewed_decisions():
     reviewed = load_reviewed()
     return jsonify({"decisions": reviewed, "total": len(reviewed)})
 
+@app.route("/api/deleted_rules")
+def api_deleted_rules():
+    reviewed = load_reviewed()
+
+    deleted = []
+    for item in reviewed:
+        if item.get("decision") == "DELETE":
+            deleted.append(item)
+
+    return jsonify({
+        "deleted": deleted,
+        "total": len(deleted),
+    })
 
 @app.route("/api/review-decision", methods=["POST"])
 def api_review_decision():

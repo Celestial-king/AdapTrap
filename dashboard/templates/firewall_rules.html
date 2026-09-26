@@ -30,6 +30,22 @@
     </div>
 </div>
 
+<div id="audit-log">
+    <div class="card section-gap">
+        <div class="card-header">
+            <span class="card-title">Deleted Firewall Rules — Audit Log</span>
+        </div>
+
+        <div class="card-body">
+            <div id="audit-log-table">
+                <div class="loading">Loading audit log…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 {% endblock %}
 
 {% block scripts %}
@@ -106,11 +122,53 @@
             }
             showToast(`Deleted firewall rule handle ${handle}`, 'ok');
             await updateRulesTable();
+            await fetchDeletedRules();
         } catch (error) {
             showToast(`Rule deletion failed: ${error.message}`, 'err');
         }
     }
 
+    async function fetchDeletedRules() {
+        try {
+            const response = await fetch('/api/deleted_rules')
+            const data = await response.json()
+            const deletionTable = data.deleted
+            let table = document.getElementById("audit-log-table")
+            let html = `
+            <table>
+            <thead><tr>
+                <th data-sort="">Timestamp</th>
+                <th>Source IP</th>
+                <th>Batch / Checkpoint</th>
+                <th>Action</th>
+            </tr></thead>
+            <tbody>
+            `
+
+            deletionTable.forEach(row => {
+                const timestamp = new Date(row.timestamp).toLocaleString()
+                html += `
+                <tr>
+                    <td>${timestamp}</td>
+                    <td>${row.source_ip}</td>
+                    <td>${row.batch}</td>
+                    <td>${row.decision}</td>
+                </tr>
+                
+                `
+            })
+            
+            html += '</tbody></table>'
+         
+            table.innerHTML = html
+        } catch (error) {
+            showToast(error)
+        }
+    }
+
+    fetchDeletedRules();
     updateRulesTable();
+
+    
 </script>
 {% endblock %}
