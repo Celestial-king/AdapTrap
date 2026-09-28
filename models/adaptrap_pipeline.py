@@ -288,39 +288,24 @@ def get_representative_ports(csv_path: str, honeypot_ip: str = HONEYPOT_IP) -> d
     )
 
 
-def generate_rules(model, X_holdout, profiles_holdout: pd.DataFrame, port_lookup: dict, label: str = "") -> pd.DataFrame:
+def generate_rules(model, X_holdout, profiles_holdout: pd.DataFrame, port_lookup: dict,
+                   label: str = "", escalate_percentile: float = 70,
+                   block_percentile: float | None = None) -> pd.DataFrame:
     """
-    Two-label firewall rule generation: ALLOW / ESCALATE_TO_ANALYST.
+    Firewall rule generation from a percentile cutoff on the batch's own
+    anomaly score distribution.
 
-    The label is driven by a single percentile cutoff on the
-    holdout's own anomaly score distribution: at or above the 70th
-    percentile -> ESCALATE_TO_ANALYST, below it -> ALLOW. This
-    matches Section 3.3.6.1 of the methodology. There is no BLOCK
-    tier - a percentile cutoff was previously used for a three-tier
-    BLOCK/ESCALATE/ALLOW split (90th percentile BLOCK, 70th-90th
-    ESCALATE); the BLOCK tier was removed so that no record is ever
-    auto-enforced, only auto-flagged for human review.
-
-    Parameters
-    ----------
-    model : fitted IsolationForest
-    X_holdout : scaled feature array to score
-    profiles_holdout : the (unscaled) profile DataFrame the rows in
-        X_holdout correspond to, row-for-row - used to pull source_ip
-    port_lookup : dict from get_representative_ports(), or {} if port
-        information isn't available/needed
-    label : optional string, used only for the printed summary and
-        the CSV export filename
-
-    Returns
-    -------
-    DataFrame with columns: source_ip, port, anomaly_score, action -
-    sorted by anomaly_score descending so the highest-priority
-    escalations are first.
+    Default (block_percentile=None): two-tier ALLOW / ESCALATE_TO_ANALYST.
+    With block_percentile set: three-tier ALLOW / ESCALATE_TO_ANALYST / BLOCK.
     """
     anomaly_scores = -model.decision_function(X_holdout)
-    threshold = np.percentile(anomaly_scores, 70)
-    actions = np.where(anomaly_scores >= threshold, "ESCALATE_TO_ANALYST", "ALLOW")
+
+    escalate_threshold = np.percentile(anomaly_scores, escalate_percentile)
+    actions = np.where(anomaly_scores >= escalate_threshold, "ESCALATE_TO_ANALYST", "ALLOW")
+
+    if block_percentile is not None:
+        block_threshold = np.percentile(anomaly_scores, block_percentile)
+        actions = np.where(anomaly_scores >= block_threshold, "BLOCK", actions)
 
     rules_df = pd.DataFrame({
         "source_ip": profiles_holdout["source_ip"].values,
@@ -332,9 +317,10 @@ def generate_rules(model, X_holdout, profiles_holdout: pd.DataFrame, port_lookup
     if label:
         print(f"\n--- {label} ---")
         print(rules_df.head(10).to_string())
-        print(f"\nESCALATE_TO_ANALYST: {(rules_df.action == 'ESCALATE_TO_ANALYST').sum()}, "
-              f"ALLOW: {(rules_df.action == 'ALLOW').sum()}")
-        print("(No records are auto-blocked. BLOCK is an analyst decision made after "
-              "reviewing an ESCALATE_TO_ANALYST record, not an automated label.)")
+        counts = rules_df["action"].value_counts().to_dict()
+        print("\n" + ", ".join(f"{k}: {v}" for k, v in counts.items()))
+        if block_percentile is None:
+            print("(No records are auto-blocked. BLOCK is an analyst decision made after "
+                  "reviewing an ESCALATE_TO_ANALYST record, not an automated label.)")
 
     return rules_df

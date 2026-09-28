@@ -17,7 +17,20 @@
     </div>
     <div class="card-body">
         <div class="workflow-visual">
-           
+        <div class="workflow-step workflow-block" style="border: 2px solid #700202; background-color: rgba(239, 68, 68, 0.1);">
+            <div class="workflow-step-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </svg>
+            </div>
+            <h3>Auto block</h3>
+            <p><strong>At or above 95th Percentile</strong></p>
+            <p>Critical threats</p>
+            <p>Automatically block threats</p>
+            <p><strong>No human intervention required</strong></p>
+        </div>
             <div class="workflow-step workflow-human">
                 <div class="workflow-step-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -132,9 +145,18 @@
         <div class="card-body">
             <div class="metric">
                 <span class="metric-label">
+                    Auto Block
+                    <span class="badge badge-block"
+                        style="background-color: rgba(239, 68, 68, 0.1); color: var(--red, #ef4444); border: 1px solid var(--red, #ef4444);">Automatic</span>
+                    <span class="percentile-label">≥95th percentile</span>
+                </span>
+                <span class="metric-value score-high" id="block-count" style="color: var(--red, #ef4444);">—</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">
                     Escalate Actions
                     <span class="badge badge-human">Human</span>
-                    <span class="percentile-label">≥70th percentile</span>
+                    <span class="percentile-label">≥75th percentile</span>
                 </span>
                 <span class="metric-value score-medium" id="escalate-count">—</span>
             </div>
@@ -142,7 +164,7 @@
                 <span class="metric-label">
                     Allow Actions
                     <span class="badge badge-allow">Auto</span>
-                    <span class="percentile-label">&lt;70th percentile</span>
+                    <span class="percentile-label">&lt;75th percentile</span>
                 </span>
                 <span class="metric-value score-low" id="allow-count">—</span>
             </div>

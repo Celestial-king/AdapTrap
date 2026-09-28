@@ -127,27 +127,24 @@ def _apply_nft_rule(source_ip: str, dest_port: int | None = None) -> dict:
 
 
 def _apply_nft_rules_batch(rules_list: list[dict]) -> dict:
-    """
-    Apply a batch of BLOCK rules to nftables in a single atomic call via stdin.
-    Drastically reduces deployment time from ~2 minutes to <100ms.
-    """
+    """Apply BLOCK rules (full source IP, all ports) in one atomic nft call."""
     import ipaddress
-    valid_rules = []
-    failed_rules = []
+    valid_rules, failed_rules, seen_ips = [], [], set()
 
     for r in rules_list:
         ip = str(r.get("source_ip", "")).strip()
-        port = r.get("dest_port")
         try:
             ipaddress.ip_address(ip)
-            if port is None or pd.isna(port):
+            if ip in seen_ips:
                 continue
-            port_int = int(port)
+            seen_ips.add(ip)
             valid_rules.append({
                 "source_ip": ip,
-                "dest_port": port_int,
+                "dest_port": None,
                 "anomaly_score": float(r.get("anomaly_score", 0.0)),
                 "action": "BLOCK",
+                "profile": r.get("profile", {}),
+                "packets": r.get("packets", []),
                 "command": f"nft insert rule {NFT_TABLE} {NFT_CHAIN} ip saddr {ip} drop",
             })
         except Exception as e:
@@ -156,42 +153,31 @@ def _apply_nft_rules_batch(rules_list: list[dict]) -> dict:
     if not valid_rules:
         return {"applied": [], "failed": failed_rules, "error": None}
 
-    # Pass all rules to nft in one atomic batch
-    payload_lines = [
-        f"insert rule {NFT_TABLE} {NFT_CHAIN} ip saddr {r['source_ip']} drop"
-        for r in valid_rules
-    ]
-    payload = "\n".join(payload_lines) + "\n"
+    payload = "\n".join(
+        f"insert rule {NFT_TABLE} {NFT_CHAIN} ip saddr {r['source_ip']} drop" for r in valid_rules
+    ) + "\n"
 
     try:
-        proc = subprocess.run(
-            ["sudo", "-n", "nft", "-f", "-"],
-            input=payload,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        proc = subprocess.run(["sudo", "-n", "nft", "-f", "-"], input=payload,
+                              capture_output=True, text=True, timeout=5)
         if proc.returncode == 0:
             for r in valid_rules:
                 r["applied"] = True
                 r["status"] = "ok"
-            log.info("Batch applied %d nft rules atomically in <50ms", len(valid_rules))
+            log.info("Batch applied %d nft rules atomically", len(valid_rules))
             return {"applied": valid_rules, "failed": failed_rules, "error": None}
-        else:
-            log.warning("Batch nft failed (code %d): %s. Falling back to individual rules.",
-                        proc.returncode, proc.stderr.strip() if proc.stderr else "")
+        log.warning("Batch nft failed (code %d): %s. Falling back to individual rules.",
+                    proc.returncode, proc.stderr.strip() if proc.stderr else "")
     except Exception as e:
         log.warning("Batch nft exception: %s. Falling back to individual rules.", e)
 
-    # Fallback to individual rule application if stdin batch fails
     applied = []
     for r in valid_rules:
-        res = _apply_nft_rule(r["source_ip"], r["dest_port"])
+        res = _apply_nft_rule(r["source_ip"])
         if res["applied"]:
             applied.append({**r, "applied": True, "status": "ok"})
         else:
             failed_rules.append({**r, "applied": False, "error": res.get("error")})
-
     return {"applied": applied, "failed": failed_rules, "error": None}
 
 
@@ -413,7 +399,7 @@ def api_status():
 
     # Include any reviewed BLOCKs that were applied
     reviewed = load_reviewed()
-    analyst_blocks = sum(1 for r in reviewed if r.get("decision") == "BLOCK" and r.get("nft_applied"))
+    analyst_blocks = sum(1 for r in reviewed if r.get("decision") == "BLOCK" and r.get("nft_applied") and not r.get("auto"))
     total_calculated_rules += analyst_blocks
 
     live_count = firewall.get("rule_count") if firewall.get("success") else None
@@ -690,7 +676,7 @@ def api_automation_metrics():
             last_applied = applied_at
 
     total = total_block + total_escalate + total_allow
-    automated_count = total_allow
+    automated_count = total_allow + total_block
     automation_rate = (automated_count / total * 100) if total > 0 else 0
 
     latest_config = all_checkpoints[-1]["data"].get("config", {})
@@ -977,7 +963,7 @@ def api_import_train(job_id: str):
 
 @app.route("/api/import/deploy/<job_id>", methods=["POST"])
 def api_import_deploy(job_id: str):
-    """Queue every non-ALLOW candidate for human review and save the checkpoint."""
+    """Auto-block the BLOCK tier, queue the ESCALATE tier for analyst review, save checkpoint."""
     with _import_lock:
         job = _import_jobs.get(job_id)
 
@@ -985,7 +971,7 @@ def api_import_deploy(job_id: str):
         return jsonify({"ok": False, "error": "Unknown job_id"}), 404
 
     if job["status"] not in ("training_done", "deployed"):
-        return jsonify({"ok": False, "error": f"Job is not trained yet (current status: {job['status']})"}), 400
+        return jsonify({"ok": False, "error": f"Job is not scored yet (current status: {job['status']})"}), 400
 
     report = job.get("pipeline_report")
     if not report:
@@ -1007,56 +993,80 @@ def api_import_deploy(job_id: str):
 
     block_candidates = report.get("rule_details", [])
     escalate_candidates = report.get("escalate_details", [])
-    review_candidates = block_candidates + escalate_candidates
-    applied_rules = []
-    skipped_nan = 0
-    deduplicated = 0
-    failed = 0
-
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    # No rules are applied automatically. Preserve all candidates for analyst review.
-    queue_candidates = []
-    for r in review_candidates:
-        source_ip = r.get("source_ip")
-        dest_port = r.get("dest_port")
+    reviewed = load_reviewed()
+    reviewed_ips = {r["source_ip"] for r in reviewed if r.get("source_ip")}
 
-        if not source_ip:
+    skipped_nan = 0
+    deduplicated = 0
+
+    # 1) BLOCK tier: apply automatically, skipping IPs an analyst already ruled on
+    to_block = []
+    for r in block_candidates:
+        ip = r.get("source_ip")
+        if not ip:
             skipped_nan += 1
             continue
-        queue_candidates.append(r)
+        if ip in reviewed_ips:
+            deduplicated += 1
+            continue
+        to_block.append(r)
 
-    # Populate Analyst Queue with all candidates at or above the allow cutoff.
-    escalate_items = queue_candidates
+    batch_result = _apply_nft_rules_batch(to_block)
+    applied_rules = batch_result["applied"]
+    failed = len(batch_result["failed"])
+
+    # Record auto-blocks so the detail page, audit trail and Firewall Rules tab can find them
+    for r in applied_rules:
+        reviewed.append({
+            "source_ip": r["source_ip"],
+            "dest_port": None,
+            "decision": "BLOCK",
+            "timestamp": timestamp,
+            "batch": batch_name,
+            "nft_applied": True,
+            "auto": True,
+            "anomaly_score": r.get("anomaly_score"),
+            "profile": r.get("profile", {}),
+            "packets": r.get("packets", []),
+        })
+        reviewed_ips.add(r["source_ip"])
+    save_reviewed(reviewed)
+
+    # 2) ESCALATE tier: queue for analyst review
     queue_data = load_escalate_queue()
     current_queue = queue_data.get("queue", [])
-    reviewed = load_reviewed()
-    reviewed_ips = {rev["source_ip"] for rev in reviewed}
     existing_queue_ips = {item["source_ip"] for item in current_queue}
 
     escalate_added = 0
-    for esc in escalate_items:
+    for esc in escalate_candidates:
         ip = esc.get("source_ip")
-        if ip and ip not in reviewed_ips and ip not in existing_queue_ips:
-            esc_entry = {
-                "source_ip": ip,
-                "dest_port": int(esc["dest_port"]) if esc.get("dest_port") is not None and not pd.isna(esc.get("dest_port")) else None,
-                "anomaly_score": float(esc.get("anomaly_score", 0.0)),
-                "action": "ESCALATE_TO_ANALYST",
-                "batch": batch_name,
-                "profile": esc.get("profile", {}),
-                "packets": esc.get("packets", []),
-            }
-            current_queue.insert(0, esc_entry)  # Newest batch at top of queue
-            existing_queue_ips.add(ip)
-            escalate_added += 1
+        if not ip:
+            skipped_nan += 1
+            continue
+        if ip in reviewed_ips or ip in existing_queue_ips:
+            deduplicated += 1
+            continue
+        current_queue.insert(0, {
+            "source_ip": ip,
+            "dest_port": None,
+            "anomaly_score": float(esc.get("anomaly_score", 0.0)),
+            "action": "ESCALATE_TO_ANALYST",
+            "batch": batch_name,
+            "profile": esc.get("profile", {}),
+            "packets": esc.get("packets", []),
+        })
+        existing_queue_ips.add(ip)
+        escalate_added += 1
 
     queue_data["queue"] = current_queue
     queue_data["total"] = len(current_queue)
     queue_data["last_updated"] = timestamp
     save_escalate_queue(queue_data)
 
-    # Save applied checkpoint for this batch
+    # 3) Save checkpoint for this batch
+    total_candidates = len(block_candidates) + len(escalate_candidates)
     applied_checkpoint = dict(report)
     applied_checkpoint["applied_at"] = timestamp
     applied_checkpoint["dry_run"] = False
@@ -1066,10 +1076,11 @@ def api_import_deploy(job_id: str):
     applied_checkpoint["rule_details"] = applied_rules
     applied_checkpoint["application_summary"] = {
         "batch_name": batch_name,
-        "total_candidates": len(review_candidates),
+        "total_candidates": total_candidates,
         "deduplicated": deduplicated,
         "skipped_nan": skipped_nan,
         "applied": len(applied_rules),
+        "auto_blocked": len(applied_rules),
         "failed": failed,
         "escalate_added": escalate_added,
     }
@@ -1079,7 +1090,6 @@ def api_import_deploy(job_id: str):
     with open(checkpoint_path, "w") as fh:
         json.dump(applied_checkpoint, fh, indent=2)
 
-    # Register in imported_batches.json
     batches = load_imported_batches()
     batches = [b for b in batches if b.get("batch_id") != batch_id]
     batches.append({
@@ -1096,8 +1106,10 @@ def api_import_deploy(job_id: str):
     deploy_summary = {
         "batch_name": batch_name,
         "batch_id": batch_id,
-        "total_candidates": len(review_candidates),
+        "total_candidates": total_candidates,
         "applied": len(applied_rules),
+        "auto_blocked": len(applied_rules),
+        "block_failed": failed,
         "deduplicated": deduplicated,
         "skipped_nan": skipped_nan,
         "failed": failed,
@@ -1109,8 +1121,7 @@ def api_import_deploy(job_id: str):
         job["status"] = "deployed"
         job["deploy_summary"] = deploy_summary
 
-    log.info("%s queued: %d candidates for analyst review", batch_name, escalate_added)
-
+    log.info("%s: %d auto-blocked, %d queued for analyst review", batch_name, len(applied_rules), escalate_added)
     return jsonify({"ok": True, "summary": deploy_summary})
 
 

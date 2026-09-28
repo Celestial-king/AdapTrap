@@ -41,7 +41,8 @@ logging.basicConfig(
 log = logging.getLogger("adaptrap")
 
 REPO_NAME = "RnzB6/AdapTrap-m3"
-
+ESCALATE_PERCENTILE = 75
+BLOCK_PERCENTILE = 95
 
 # ---------------------------------------------------------------------------
 # Load the published M3 checkpoint once, at import time
@@ -58,8 +59,9 @@ FEATURE_COLUMNS = joblib.load(SAVED_MODELS_DIR / "m3_feature_cols")
 # Metrics (Section 3.4.1)
 # ---------------------------------------------------------------------------
 
+# Count everything that isn't allow.
 def flagging_rate(actions: np.ndarray) -> float:
-    return float(np.mean(actions == "ESCALATE_TO_ANALYST") * 100)
+    return float(np.mean(actions != "ALLOW") * 100)
 
 
 def anomaly_score_distribution(scores: np.ndarray) -> dict:
@@ -115,44 +117,50 @@ def main():
     X_scaled = scaler.transform(profiles[FEATURE_COLUMNS])
 
     # No port lookup: enforcement blocks the full IP, not a specific port
-    rules_df = generate_rules(model, X_scaled, profiles, {}, label="New batch vs M3")
+    rules_df = generate_rules(
+        model, X_scaled, profiles, {}, label="New batch vs M3",
+        escalate_percentile=ESCALATE_PERCENTILE, block_percentile=BLOCK_PERCENTILE,
+    )
 
     scores = rules_df["anomaly_score"].to_numpy()
     actions = rules_df["action"].to_numpy()
 
+    n_block = int(np.sum(actions == "BLOCK"))
     n_escalate = int(np.sum(actions == "ESCALATE_TO_ANALYST"))
     n_allow = int(np.sum(actions == "ALLOW"))
     total = len(actions)
 
     profile_lookup = profiles.set_index("source_ip")
 
-    escalate_details = []
-    for _, row in rules_df[rules_df["action"] == "ESCALATE_TO_ANALYST"].iterrows():
-        ip = row["source_ip"]
+    def build_details(action: str) -> list:
+        out = []
+        for _, row in rules_df[rules_df["action"] == action].iterrows():
+            ip = row["source_ip"]
+            profile_row = {}
+            if ip in profile_lookup.index:
+                p = profile_lookup.loc[ip].to_dict()
+                profile_row = {k: (float(v) if isinstance(v, (int, float)) else v)
+                               for k, v in p.items() if k != "dominant_protocol"}
+            ip_packets = raw[raw["source_ip"] == ip][["time_sec", "source_ip", "protocol", "length", "info"]]
+            out.append({
+                "source_ip": ip,
+                "dest_port": None,
+                "anomaly_score": float(row["anomaly_score"]),
+                "action": action,
+                "profile": profile_row,
+                "packets": ip_packets.head(50).to_dict(orient="records"),
+            })
+        return out
 
-        profile_row = {}
-        if ip in profile_lookup.index:
-            p = profile_lookup.loc[ip].to_dict()
-            profile_row = {k: (float(v) if isinstance(v, (int, float)) else v)
-                            for k, v in p.items() if k != "dominant_protocol"}
-
-        ip_packets = raw[raw["source_ip"] == ip][["time_sec", "source_ip", "protocol", "length", "info"]]
-        packet_rows = ip_packets.head(50).to_dict(orient="records")  # cap at 50 rows per IP — see note below
-
-        escalate_details.append({
-            "source_ip": ip,
-            "dest_port": None,
-            "anomaly_score": float(row["anomaly_score"]),
-            "action": "ESCALATE_TO_ANALYST",
-            "profile": profile_row,
-            "packets": packet_rows,
-        })
+    block_details = build_details("BLOCK")
+    escalate_details = build_details("ESCALATE_TO_ANALYST")
 
     metrics = {
         "flagging_rate_pct": round(flagging_rate(actions), 2),
         "anomaly_score_distribution": anomaly_score_distribution(scores),
         "silhouette_coefficient": silhouette_coefficient(model, X_scaled),
         "action_breakdown": {
+            "BLOCK": {"count": n_block, "pct": round(n_block / total * 100, 1)},
             "ESCALATE_TO_ANALYST": {"count": n_escalate, "pct": round(n_escalate / total * 100, 1)},
             "ALLOW": {"count": n_allow, "pct": round(n_allow / total * 100, 1)},
         },
@@ -162,13 +170,14 @@ def main():
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "config": {
             "model_source": REPO_NAME,
-            "low_percentile": 70,
+            "low_percentile": ESCALATE_PERCENTILE,
+            "high_percentile": BLOCK_PERCENTILE,
         },
         "metrics": metrics,
-        "rules_generated": 0,
-        "rule_details": [],
+        "rules_generated": len(block_details),
+        "rule_details": block_details,
         "escalate_details": escalate_details,
-        "dry_run": True,
+        "dry_run": True,   # this script never touches nftables; the dashboard deploy step does
     }
 
     print(json.dumps(report, indent=2, default=str))
