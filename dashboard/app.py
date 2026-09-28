@@ -378,9 +378,15 @@ def firewall_rules():
 def api_escalate_item(source_ip):
     data = load_escalate_queue()
     item = next((i for i in data.get("queue", []) if i.get("source_ip") == source_ip), None)
-    if not item:
-        return jsonify({"ok": False, "error": "Record not found"}), 404
-    return jsonify({"ok": True, "item": item})
+    if item:
+        return jsonify({"ok": True, "item": item})
+
+    reviewed = load_reviewed()
+    decision = next((r for r in reviewed if r.get("source_ip") == source_ip and r.get("decision") == "BLOCK"), None)
+    if decision:
+        return jsonify({"ok": True, "item": decision, "already_reviewed": True})
+
+    return jsonify({"ok": False, "error": "Record not found"}), 404
 
 @app.route("/api/status")
 def api_status():
@@ -627,7 +633,7 @@ def api_delete_rule():
     })
     save_reviewed(reviewed)
 
-    log.info("Deleted nftables rule handle %d", handle, source_ip, batch,)
+    log.info("Deleted nftables rule handle %d", handle, source_ip, batch)
 
     return jsonify({"ok": True, "handle": handle, "timestamp": timestamp, "stdout": result.stdout})
 
@@ -753,6 +759,8 @@ def api_review_decision():
     dest_port = body.get("dest_port")
     decision = body.get("decision", "").lower()
     batch_name = body.get("batch", "Analyst Review")
+    profile = body.get("profile", {})
+    packets = body.get("packets", [])
 
     if not source_ip or decision not in ("block", "allow"):
         return jsonify({"ok": False, "error": "Missing or invalid fields (source_ip, decision)"}), 400
@@ -785,6 +793,8 @@ def api_review_decision():
         "timestamp": timestamp,
         "batch": batch_name,
         "nft_applied": nft_result["applied"] if nft_result else False,
+        "profile": profile,
+        "packets": packets,
     })
     save_reviewed(reviewed)
 

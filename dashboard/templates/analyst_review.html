@@ -256,6 +256,9 @@ async function submitDecision(idx, decision) {
                 dest_port: item.dest_port,
                 decision:  decision,
                 batch:     item.batch || 'Analyst Review',
+                profile: item.profile || {},
+                packets: item.packets || [],
+
             }),
         });
 

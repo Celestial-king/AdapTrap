@@ -89,7 +89,7 @@
         top.forEach(rule => {
             html += `
             <tr>
-                <td class="mono">${escapeHtml(rule.source_ip)}</td>
+                <td class="mono"><a href="/analyst-review/${encodeURIComponent(rule.source_ip)}">${escapeHtml(rule.source_ip)}</a></td>
                 <td class="mono num">${rule.port ?? '__'}</td>
                 <td class="mono num">${rule.handle}</td>
                 <td><span class="badge badge-neutral">${escapeHtml(rule.checkpoint)}</span></td>

@@ -18,13 +18,14 @@
                 <table data-sortable>
                     <tbody id="detail-fields"></tbody>
                 </table>
-                <div style="display:flex; gap:8px; margin-top:16px;">   
+                <h4 style="margin-top:20px; margin-bottom:10px;">Raw Packet Log (up to 50 rows)</h4>
+                <div id="detail-packets"></div>
+                
+                <div id="detail-actions" style="margin-top:16px;">
                     <button class="btn btn-danger" id="btn-block" onclick="submitDecision('block')">Block</button>
                     <button class="btn btn-success" id="btn-allow" onclick="submitDecision('allow')">Allow</button>
                 </div>
-                <h4 style="margin-top:20px; margin-bottom: 10px;">Raw Packet Log (up to 50 rows)</h4>
-                <div id="detail-packets"></div>
-        
+
             </div>
             <div id="detail-error" style="display:none; color:var(--red);"></div>
         </div>
@@ -35,7 +36,7 @@
 
 {% block scripts %}
 <script>
-    const SOURCE_IP = {{ source_ip | tojson | safe }};    
+    const SOURCE_IP = {{ source_ip | tojson | safe }};
     let _item = null;
 
     function escHtml(s) {
@@ -53,6 +54,25 @@
                 return;
             }
             _item = data.item;
+            _item.already_reviewed = data.already_reviewed;
+
+            // If already blocked, look up its firewall rule handle
+            if (_item.already_reviewed && _item.decision === 'BLOCK') {
+                try {
+                    const rulesRes = await fetch('/api/firewall-rules');
+                    const rulesData = await rulesRes.json();
+
+                    if (rulesData.ok) {
+                        const match = rulesData.rules.find(r => r.source_ip === SOURCE_IP);
+                        if (match) {
+                            _item.handle = match.handle;
+                        }
+                    }
+                } catch (e) {
+                    // Firewall rules unavailable
+                }
+            }
+
             renderDetail();
         } catch (err) {
             document.getElementById('detail-loading').style.display = 'none';
@@ -62,48 +82,81 @@
     }
 
     function renderDetail() {
-            document.getElementById('detail-loading').style.display = 'none';
-            document.getElementById('detail-body').style.display = 'block';
-
-            const rows = [
-                ['Source IP', _item.source_ip],
-                ['Batch', _item.batch || '—'],
-                ['Anomaly Score', typeof _item.anomaly_score === 'number' ? _item.anomaly_score.toFixed(4) : '—'],
-                ['Representative Port', _item.dest_port ?? 'N/A (informational only — not used for enforcement scope)'],
-            ];
-
-            document.getElementById('detail-fields').innerHTML = rows.map(([k, v]) =>
-                `<tr><td style="color:var(--text-muted); width:220px;">${escHtml(k)}</td><td class="mono">${escHtml(v)}</td></tr>`
-            ).join('');
-
-            // Raw packet log
-            const packets = _item.packets || [];
-            const packetsSection = document.getElementById('detail-packets');
-            if (packets.length === 0) {
-                packetsSection.innerHTML = '<p style="color:var(--text-muted); font-size:0.88em;">No packet-level data available for this record.</p>';
-                return;
-            }
+        document.getElementById('detail-loading').style.display = 'none';
+        document.getElementById('detail-body').style.display = 'block';
+        // Raw packet log
+        const packets = _item.packets || [];
+        const packetsSection = document.getElementById('detail-packets');
+        if (packets.length === 0) {
+            packetsSection.innerHTML = '<p style="color:var(--text-muted); font-size:0.88em;">No packet-level data available for this record.</p>';
+        } else {
             let html = `
-                    <table data-sortable>
-                        <thead><tr>
-                            <th>Time</th><th>Source</th><th>Protocol</th><th class="num">Length</th><th>Info</th>
-                        </tr></thead>
-                        <tbody>
-                `;
-                        packets.forEach(p => {
-                            html += `
-                        <tr>
-                            <td class="mono">${escHtml(p.time_sec ?? '—')}</td>
-                            <td class="mono">${escHtml(p.source_ip ?? '—')}</td>
-                            <td>${escHtml(p.protocol ?? '—')}</td>
-                            <td class="mono num">${escHtml(p.length ?? '—')}</td>
-                            <td class="mono" style="font-size:0.82em;">${escHtml(p.info ?? '—')}</td>
-                        </tr>
+                        <table data-sortable>
+                            <thead><tr>
+                                <th>Time</th><th>Source</th><th>Protocol</th><th class="num">Length</th><th>Info</th>
+                            </tr></thead>
+                            <tbody>
                     `;
-            });
+            packets.forEach(p => {
+                html += `
+                            <tr>
+                                <td class="mono">${escHtml(p.time_sec ?? '—')}</td>
+                                <td class="mono">${escHtml(p.source_ip ?? '—')}</td>
+                                <td>${escHtml(p.protocol ?? '—')}</td>
+                                <td class="mono num">${escHtml(p.length ?? '—')}</td>
+                                <td class="mono" style="font-size:0.82em;">${escHtml(p.info ?? '—')}</td>
+                            </tr>
+                        `;
+            })
+        
             html += '</tbody></table>';
             packetsSection.innerHTML = html;
+        };
+
+        const rows = [
+            ['Source IP', _item.source_ip],
+            ['Batch', _item.batch || '—'],
+            ['Anomaly Score', typeof _item.anomaly_score === 'number' ? _item.anomaly_score.toFixed(4) : '—'],
+            ['Representative Port', _item.dest_port ?? 'N/A (informational only — not used for enforcement scope)'],
+        ];
+
+
+        document.getElementById('detail-fields').innerHTML = rows.map(([k, v]) =>
+            `<tr><td style="color:var(--text-muted); width:220px;">${escHtml(k)}</td><td class="mono">${escHtml(v)}</td></tr>`
+        ).join('');
+
+        const actionsDiv = document.getElementById('detail-actions');
+        if (_item.already_reviewed) {
+            if (_item.decision === 'BLOCK' && _item.handle) {
+                actionsDiv.innerHTML = `
+                <p class="info-text">This IP was already blocked on ${new Date(_item.timestamp).toLocaleString()}.</p>
+                <button class="btn btn-danger" onclick="deleteRule(${_item.handle})">Delete Rule</button>
+            `;
+            } else {
+                actionsDiv.innerHTML = `<p class="info-text">This IP was already ${_item.decision === 'BLOCK' ? 'blocked' : 'allowed'} on ${new Date(_item.timestamp).toLocaleString()}.</p>`;
+            }
         }
+    }
+
+    async function deleteRule(handle) {
+        if (!confirm(`Delete this firewall rule (handle ${handle})? This is immediate.`)) return;
+        try {
+            const resp = await fetch('/api/delete-rule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ handle }),
+            });
+            const result = await resp.json();
+            if (!resp.ok || !result.ok) {
+                showToast('Failed: ' + (result.error ?? `HTTP ${resp.status}`), 'err');
+                return;
+            }
+            showToast('Rule deleted', 'ok');
+            window.location.href = '/firewall-rules';
+        } catch (err) {
+            showToast('Network error: ' + err.message, 'err');
+        }
+    }
 
     async function submitDecision(decision) {
         if (!_item) return;
@@ -119,6 +172,9 @@
                     dest_port: _item.dest_port,
                     decision: decision,
                     batch: _item.batch || 'Analyst Review',
+                    profile: _item.profile || {},
+                    packets: _item.packets || [],
+
                 }),
             });
             const result = await resp.json();
