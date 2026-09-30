@@ -13,6 +13,8 @@ build/
 # ── Large raw honeypot captures (>100MB — GitHub hard limit) ───────
 CICHoneynet_July2-9.csv
 CICHoneynet_July1.csv
+!datasets/.gitkeep
+datasets/*
 *.pcap
 *.pcapng
 
