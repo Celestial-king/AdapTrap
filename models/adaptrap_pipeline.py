@@ -137,7 +137,7 @@ def fit_scaler(profiles: pd.DataFrame, feature_cols: list) -> StandardScaler:
 
 def assign_dominant_protocol(profiles: pd.DataFrame) -> pd.DataFrame:
     """
-    Section 3.4.2: adds a 'dominant_protocol' column per attacker IP -
+     Adds a 'dominant_protocol' column per attacker IP -
     the stratification label used by stratified_three_way_split.
 
     The raw capture (CICHoneynet CSVs) has no ground-truth attack-type
@@ -289,7 +289,7 @@ def get_representative_ports(csv_path: str, honeypot_ip: str = HONEYPOT_IP) -> d
 
 
 def generate_rules(model, X_holdout, profiles_holdout: pd.DataFrame, port_lookup: dict,
-                   label: str = "", escalate_percentile: float = 70,
+                   label: str = "", escalate_percentile: float = 75,
                    block_percentile: float | None = None) -> pd.DataFrame:
     """
     Firewall rule generation from a percentile cutoff on the batch's own

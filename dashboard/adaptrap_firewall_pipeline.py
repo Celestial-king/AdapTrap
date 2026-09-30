@@ -50,10 +50,13 @@ BLOCK_PERCENTILE = 95
 from pathlib import Path
 SAVED_MODELS_DIR = Path(__file__).resolve().parent.parent / "saved_models"
 
-model = joblib.load(SAVED_MODELS_DIR / "m3_IF_model")
-scaler = joblib.load(SAVED_MODELS_DIR / "m3_scaler")
-FEATURE_COLUMNS = joblib.load(SAVED_MODELS_DIR / "m3_feature_cols")
+model = joblib.load(SAVED_MODELS_DIR / "m5_IF_model")
+scaler = joblib.load(SAVED_MODELS_DIR / "m5_scaler")
+FEATURE_COLUMNS = joblib.load(SAVED_MODELS_DIR / "m5_feature_cols")
 
+model_path = SAVED_MODELS_DIR / "m5_IF_model"
+model = joblib.load(model_path)
+MODEL_NAME = model_path.stem
 
 # ---------------------------------------------------------------------------
 # Metrics (Section 3.4.1)
@@ -101,7 +104,7 @@ def main():
                          help="Path to write this batch's JSON report")
     args = parser.parse_args()
 
-    log.info("Scoring %s against published M3 checkpoint (%s)", args.raw_csv, REPO_NAME)
+    log.info("Scoring %s against latest published checkpoint (%s)", args.raw_csv, MODEL_NAME)
 
     # Build attacker profiles the same way M3's training data was built
     raw = load_and_clean(args.raw_csv)          # cleaned packet-level frame
@@ -118,7 +121,7 @@ def main():
 
     # No port lookup: enforcement blocks the full IP, not a specific port
     rules_df = generate_rules(
-        model, X_scaled, profiles, {}, label="New batch vs M3",
+        model, X_scaled, profiles, {}, label=f"New batch vs {MODEL_NAME}",
         escalate_percentile=ESCALATE_PERCENTILE, block_percentile=BLOCK_PERCENTILE,
     )
 
