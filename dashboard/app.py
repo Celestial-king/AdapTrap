@@ -362,15 +362,15 @@ def firewall_rules():
 
 @app.route("/api/escalate_queue/<source_ip>")
 def api_escalate_item(source_ip):
-    reviewed = load_reviewed()
-    decision = next((r for r in reviewed if r.get("source_ip") == source_ip and r.get("decision") == "BLOCK"), None)
-    if decision:
-        return jsonify({"ok": True, "item": decision, "already_reviewed": True})
-
     data = load_escalate_queue()
     item = next((i for i in data.get("queue", []) if i.get("source_ip") == source_ip), None)
     if item:
         return jsonify({"ok": True, "item": item})
+
+    reviewed = load_reviewed()
+    decision = next((r for r in reviewed if r.get("source_ip") == source_ip and r.get("decision") == "BLOCK"), None)
+    if decision:
+        return jsonify({"ok": True, "item": decision, "already_reviewed": True})
 
     return jsonify({"ok": False, "error": "Record not found"}), 404
 
